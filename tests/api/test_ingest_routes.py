@@ -1,0 +1,31 @@
+def test_trigger_ingestion_fixture_mode(client_with_db):
+    resp = client_with_db.post("/ingest/google_ads")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["source"] == "google_ads"
+    assert body["total"] >= 1
+    assert body["total"] == body["inserted"] + body["updated"]
+
+
+def test_trigger_meta_totals_consistent(client_with_db):
+    body = client_with_db.post("/ingest/meta").json()
+    assert body["total"] == body["inserted"] + body["updated"]
+
+
+def test_unknown_source_400(client_with_db):
+    assert client_with_db.post("/ingest/nope").status_code == 400
+
+
+def test_trigger_competitor_surfaces_failed_name(client_with_db, monkeypatch):
+    """A competitor whose fetch blows up must be reported by name in `failed`,
+    not just swallowed into the totals -- proves the job-dict -> IngestResponse wiring."""
+    from athena.adapters.meta import MetaCompetitorAdapter
+
+    def boom(self, **kwargs):
+        raise RuntimeError("simulated adapter failure")
+
+    monkeypatch.setattr(MetaCompetitorAdapter, "fetch_fixture", boom)
+    resp = client_with_db.post("/ingest/competitor")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["failed"] == ["Extra Space Asia"]

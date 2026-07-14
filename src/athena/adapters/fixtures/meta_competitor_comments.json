@@ -1,0 +1,30 @@
+{
+  "data": [
+    {"id": "555000111222333_888999000111222_777666555444333", "message": "Nice but the website doesn't show prices upfront.",
+     "created_time": "2026-07-11T12:00:00+0000", "from": {"name": "Alex T.", "id": "10160000000000001"},
+     "like_count": 1, "comment_count": 0},
+    {"id": "555000111222333_888999000111222_777666555444334", "message": "Access hours are quite limited on weekends.",
+     "created_time": "2026-07-11T13:00:00+0000", "from": {"id": "10160000000000002"},
+     "like_count": 2, "comment_count": 0},
+    {"id": "555000111222333_888999000111223_777666555444335", "message": "Had to call three times to get a quote.",
+     "created_time": "2026-07-07T11:00:00+0000", "from": {"name": "Ben Ong", "id": "10160000000000003"},
+     "like_count": 0, "comment_count": 0},
+    {"id": "555000111222333_888999000111223_777666555444336", "message": "The free lock offer wasn't honoured at checkout.",
+     "created_time": "2026-07-07T12:00:00+0000", "from": {"id": "10160000000000004"},
+     "like_count": 3, "comment_count": 1},
+    {"id": "444000111222333_900000000001_777666555444337", "message": "Sale price is only for the smallest units, bit misleading.",
+     "created_time": "2026-07-12T09:00:00+0000", "from": {"name": "Cheryl Wong", "id": "10160000000000005"},
+     "like_count": 4, "comment_count": 0},
+    {"id": "444000111222333_900000000001_777666555444338", "message": "Tried to book but kept getting upsold to a bigger unit.",
+     "created_time": "2026-07-12T10:00:00+0000", "from": {"id": "10160000000000006"},
+     "like_count": 1, "comment_count": 0},
+    {"id": "444000111222333_900000000002_777666555444339", "message": "Waitlist has been open for months with no update.",
+     "created_time": "2026-07-09T10:00:00+0000", "from": {"name": "Ismail K.", "id": "10160000000000007"},
+     "like_count": 0, "comment_count": 0},
+    {"id": "444000111222333_900000000003_777666555444340", "message": "20% off but the base rate is higher than competitors to start.",
+     "created_time": "2026-07-05T11:00:00+0000", "from": {"id": "10160000000000008"},
+     "like_count": 2, "comment_count": 0}
+  ],
+  "paging": {"cursors": {"before": "MQ==", "after": "Mg=="}},
+  "summary": {"order": "chronological", "total_count": 8, "can_comment": true}
+}

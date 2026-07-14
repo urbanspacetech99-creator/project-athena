@@ -1,0 +1,76 @@
+{
+  "results": [
+    {"text": "self storage singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "3917", "competition": "HIGH", "competitionIndex": "82",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "3800"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "3950"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "4000"}]},
+     "closeVariants": ["self-storage singapore", "storage singapore"]},
+    {"text": "storage space singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "1250", "competition": "MEDIUM", "competitionIndex": "55",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "1200"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "1250"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "1300"}]},
+     "closeVariants": ["extra storage space singapore"]},
+    {"text": "storage unit singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "2200", "competition": "HIGH", "competitionIndex": "70",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "2100"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "2200"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "2300"}]},
+     "closeVariants": ["storage units singapore"]},
+    {"text": "cheap storage singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "950", "competition": "MEDIUM", "competitionIndex": "48",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "900"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "950"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "1000"}]},
+     "closeVariants": ["affordable storage singapore"]},
+    {"text": "valet storage singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "340", "competition": "LOW", "competitionIndex": "22",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "320"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "340"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "360"}]},
+     "closeVariants": []},
+    {"text": "business storage singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "520", "competition": "MEDIUM", "competitionIndex": "40",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "500"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "520"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "540"}]},
+     "closeVariants": ["commercial storage singapore"]},
+    {"text": "student storage singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "1400", "competition": "LOW", "competitionIndex": "30",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "600"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "1400"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "2200"}]},
+     "closeVariants": ["holiday storage singapore"]},
+    {"text": "coworking space singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "2717", "competition": "HIGH", "competitionIndex": "75",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "2800"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "2700"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "2650"}]},
+     "closeVariants": ["co-working space singapore", "shared office singapore"]},
+    {"text": "hot desk singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "1550", "competition": "MEDIUM", "competitionIndex": "58",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "1500"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "1550"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "1600"}]},
+     "closeVariants": ["hot desking singapore"]},
+    {"text": "ecommerce fulfilment singapore",
+     "keywordIdeaMetrics": {"avgMonthlySearches": "750", "competition": "LOW", "competitionIndex": "35",
+        "monthlySearchVolumes": [
+          {"year": "2026", "month": "MAY", "monthlySearches": "700"},
+          {"year": "2026", "month": "JUNE", "monthlySearches": "750"},
+          {"year": "2026", "month": "JULY", "monthlySearches": "800"}]},
+     "closeVariants": ["fulfilment services singapore", "pick and pack singapore"]}
+  ],
+  "nextPageToken": null,
+  "totalSize": "10"
+}

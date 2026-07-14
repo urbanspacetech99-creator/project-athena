@@ -1,0 +1,100 @@
+{
+  "business_discovery": {
+    "username": "extraspaceasia",
+    "media": {
+      "data": [
+        {
+          "id": "17900000000000001",
+          "caption": "Storage units from S$95/mo at our Boon Keng facility. Grab yours today!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000001/",
+          "timestamp": "2026-07-12T10:00:00+0000",
+          "like_count": 42,
+          "comments_count": 5
+        },
+        {
+          "id": "17900000000000002",
+          "caption": "Flash promo: 20% off your first 3 months. Terms apply.",
+          "media_type": "CAROUSEL_ALBUM",
+          "permalink": "https://www.instagram.com/p/EXA000002/",
+          "timestamp": "2026-07-10T08:30:00+0000",
+          "like_count": 87,
+          "comments_count": 12
+        },
+        {
+          "id": "17900000000000003",
+          "caption": "New depot now open -- sign up and save!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000003/",
+          "timestamp": "2026-07-08T09:00:00+0000",
+          "like_count": 55,
+          "comments_count": 7
+        },
+        {
+          "id": "17900000000000004",
+          "caption": "Don't miss our biggest sale of the season!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000004/",
+          "timestamp": "2026-07-06T11:00:00+0000",
+          "like_count": 63,
+          "comments_count": 9
+        },
+        {
+          "id": "17900000000000005",
+          "caption": "Refer a friend, you both get a discount!",
+          "media_type": "CAROUSEL_ALBUM",
+          "permalink": "https://www.instagram.com/p/EXA000005/",
+          "timestamp": "2026-07-05T10:00:00+0000",
+          "like_count": 48,
+          "comments_count": 6
+        },
+        {
+          "id": "17900000000000006",
+          "caption": "Free lock with every new sign-up this week!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000006/",
+          "timestamp": "2026-06-30T09:30:00+0000",
+          "like_count": 39,
+          "comments_count": 4
+        },
+        {
+          "id": "17900000000000007",
+          "caption": "Limited units left at our Tampines branch -- enquire now!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000007/",
+          "timestamp": "2026-06-26T08:00:00+0000",
+          "like_count": 51,
+          "comments_count": 6
+        },
+        {
+          "id": "17900000000000008",
+          "caption": "Storage made simple. Message us for a custom quote!",
+          "media_type": "CAROUSEL_ALBUM",
+          "permalink": "https://www.instagram.com/p/EXA000008/",
+          "timestamp": "2026-06-22T10:00:00+0000",
+          "like_count": 33,
+          "comments_count": 3
+        },
+        {
+          "id": "17900000000000009",
+          "caption": "Weekend only: extra 10% off selected units!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000009/",
+          "timestamp": "2026-06-18T09:00:00+0000",
+          "like_count": 45,
+          "comments_count": 5
+        },
+        {
+          "id": "17900000000000010",
+          "caption": "Thank you to our 10,000 happy customers!",
+          "media_type": "IMAGE",
+          "permalink": "https://www.instagram.com/p/EXA000010/",
+          "timestamp": "2026-06-14T11:00:00+0000",
+          "like_count": 71,
+          "comments_count": 8
+        }
+      ]
+    },
+    "id": "17841400000000000"
+  }
+}

@@ -1,7 +1,22 @@
-node_modules/
-venv/
+docs/superpowers/
 .env
+.venv/
 __pycache__/
 *.pyc
-*.pyc
-.DS_Store
+
+# built deploy image tarballs (move manually; don't commit)
+deploy/*.tar
+
+# frontends (marketing dashboard + dev console)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+dev-console/node_modules/
+dev-console/dist/
+dev-console/.env
+dev-console/*.tsbuildinfo
+dev-console/vite.config.js
+dev-console/vite.config.d.ts

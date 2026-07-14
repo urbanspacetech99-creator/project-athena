@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          { "inlineData": { "mimeType": "image/png", "data": "AA==" } }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": { "promptTokenCount": 0, "candidatesTokenCount": 1, "totalTokenCount": 1 }
+}
