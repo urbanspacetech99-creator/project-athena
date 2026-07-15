@@ -1,4 +1,24 @@
+import os
+from pathlib import Path
+
 import pytest
+
+
+def _test_db_url() -> str | None:
+    """Docker-free DB tests: TEST_DATABASE_URL (env var, or a line in .env) must point
+    at a DEDICATED empty database — the session fixture create_all/drop_alls every
+    table per test. Unset -> testcontainers spins up a disposable Postgres as before."""
+    url = os.getenv("TEST_DATABASE_URL", "").strip()
+    if url:
+        return url
+    env_file = Path(__file__).resolve().parent.parent / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            if line.startswith("TEST_DATABASE_URL="):
+                value = line.split("=", 1)[1].strip()
+                if value:
+                    return value
+    return None
 
 
 @pytest.fixture(autouse=True)
@@ -37,6 +57,10 @@ def env(monkeypatch):
 
 @pytest.fixture(scope="session")
 def pg_url():
+    url = _test_db_url()
+    if url:
+        yield url
+        return
     from testcontainers.postgres import PostgresContainer
     with PostgresContainer("postgres:16-alpine", driver="psycopg") as pg:
         yield pg.get_connection_url()

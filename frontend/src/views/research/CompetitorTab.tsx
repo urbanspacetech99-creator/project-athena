@@ -2,13 +2,15 @@ import { useState } from "react";
 import { api } from "../../api";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
+import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
-import { useApi } from "../../hooks/useApi";
+import { useApi, useCachedApi } from "../../hooks/useApi";
+import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { competitorActivity, newestFirst } from "../../lib/derive";
 
 export function CompetitorTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   const competitors = useApi(api.listCompetitors);
-  const analysis = useApi(api.competitor);
+  const analysis = useCachedApi(CACHE_KEYS.competitor, api.competitor);
   const posts = useApi(api.competitorPosts);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ export function CompetitorTab({ onGenerate }: { onGenerate: (title: string, cont
 
   return (
     <>
-      <div className="ct-title" style={{ marginBottom: 2 }}>Your Competitors</div>
+      <div className="ct-title" style={{ marginBottom: 2 }}>Your Competitors <StatusBadge kind="data" source="meta" /></div>
       <div className="ct-sub" style={{ marginBottom: 14 }}>
         Posting activity of tracked competitors, from Facebook and Instagram public pages
       </div>

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ASSET } from "../../assets";
 import { Ico } from "../../icons";
+import { cacheDelete } from "../../lib/cache";
+import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { TagPill } from "../../components/TagPill";
-import { useToast } from "../../toast";
 import { CompetitorTab } from "./CompetitorTab";
 import { CustomerTab } from "./CustomerTab";
 import { SocialTab } from "./SocialTab";
@@ -21,8 +22,13 @@ const TOPICS: Array<{ id: TopicId; label: string; img: string; col1: string; col
     desc: "Tracked competitors — posts, activity, AI strategy." },
 ];
 
+/** AI cache key busted by the header Refresh (lib/cacheKeys.ts, see the spec §3). */
+const TAB_CACHE_KEY: Record<TopicId, string> = {
+  tr: CACHE_KEYS.internetTrends, zo: CACHE_KEYS.customerInsights,
+  so: CACHE_KEYS.socialReviews, cp: CACHE_KEYS.competitor,
+};
+
 export function ResearchView({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
-  const toast = useToast();
   const [mode, setMode] = useState<"selector" | "tabs">("selector");
   const [enabled, setEnabled] = useState<Record<TopicId, boolean>>({ tr: true, zo: true, so: true, cp: true });
   const [active, setActive] = useState<TopicId>("tr");
@@ -30,10 +36,7 @@ export function ResearchView({ onGenerate }: { onGenerate: (title: string, conte
 
   const count = Object.values(enabled).filter(Boolean).length;
 
-  const toggle = (id: TopicId) => {
-    if (enabled[id] && count === 1) { toast("At least one source must stay selected"); return; }
-    setEnabled({ ...enabled, [id]: !enabled[id] });
-  };
+  const toggle = (id: TopicId) => setEnabled({ ...enabled, [id]: !enabled[id] });
 
   const openTabs = () => {
     setActive((prev) => (enabled[prev] ? prev : TOPICS.find((t) => enabled[t.id])?.id ?? "tr"));
@@ -45,7 +48,7 @@ export function ResearchView({ onGenerate }: { onGenerate: (title: string, conte
       <div className="pgwrap">
         <div>
           <div className="pg-title" style={{ fontSize: 34 }}>Research</div>
-          <div className="pg-sub">AI-powered market intelligence for Urban Space — updated weekly.</div>
+          <div className="pg-sub">AI-powered market intelligence for UrbanSpace — updated weekly.</div>
         </div>
         <div className="rs-heading">What are we researching today?</div>
         <div className="rs-banner">
@@ -72,11 +75,13 @@ export function ResearchView({ onGenerate }: { onGenerate: (title: string, conte
             <TagPill style={{ background: "var(--ora-l)", color: "var(--ora-d)", padding: "7px 14px", fontSize: 11 }}>
               {count} of 4 sources selected
             </TagPill>
-            <button className="btn-underline" onClick={() => setEnabled({ tr: true, zo: false, so: false, cp: false })}>
+            <button className="btn-underline" onClick={() => setEnabled({ tr: false, zo: false, so: false, cp: false })}>
               Clear all
             </button>
           </div>
-          <button className="btn btn-ora" onClick={openTabs}><Ico k="check" /> View Research</button>
+          <button className="btn btn-ora" onClick={openTabs} disabled={count === 0}>
+            <Ico k="check" /> View Research
+          </button>
         </div>
       </div>
     );
@@ -87,11 +92,14 @@ export function ResearchView({ onGenerate }: { onGenerate: (title: string, conte
       <div className="res-hdr-row">
         <div>
           <div className="pg-title" style={{ fontSize: 34 }}>Research</div>
-          <div className="pg-sub">AI-powered market intelligence for Urban Space — updated weekly.</div>
+          <div className="pg-sub">AI-powered market intelligence for UrbanSpace — updated weekly.</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-white" onClick={() => setMode("selector")}><Ico k="hand" /> Change Sources</button>
-          <button className="btn btn-white" onClick={() => setRefreshKey((k) => k + 1)}><Ico k="refresh" /> Refresh</button>
+          <button className="btn btn-white"
+            onClick={() => { cacheDelete(TAB_CACHE_KEY[active]); setRefreshKey((k) => k + 1); }}>
+            <Ico k="refresh" /> Refresh
+          </button>
         </div>
       </div>
       <div className="subtab-row">

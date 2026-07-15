@@ -1,9 +1,10 @@
 import type {
   AgentDef, CompetitorPostRow, CompetitorResponse, CompetitorRow, CustomerInsightsResponse,
   Draft, EffectivePrompt, EngagementSummary, GeneratePostIn, GeneratePostOut, GoogleReviewRow,
-  KpiSnapshot, KeywordVolumeRow, ListResponse, OwnPostRow, PostCommentRow, Questions,
-  Recommendations, SkillDef, SocialResponse, TrackedKeyword, Trends, ZohoChatRow,
+  KpiSnapshot, KeywordVolumeRow, ListResponse, Modes, OwnPostRow, PostCommentRow, Questions,
+  Recommendations, SkillDef, SocialResponse, StreamProgress, TrackedKeyword, Trends, ZohoChatRow,
 } from "./types";
+import { streamNdjson } from "./lib/stream";
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
@@ -65,6 +66,13 @@ export const api = {
     request<Draft>(`/generate/drafts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteDraft: (id: number) => request<void>(`/generate/drafts/${id}`, { method: "DELETE" }),
   recommendations: () => request<Recommendations>("/generate/recommendations"),
+  recommendationsStream: (onProgress: (p: StreamProgress) => void) =>
+    streamNdjson<Recommendations>(API_BASE + "/generate/recommendations/stream", {}, onProgress),
+  generatePostStream: (body: GeneratePostIn, onProgress: (p: StreamProgress) => void) =>
+    streamNdjson<GeneratePostOut>(API_BASE + "/generate/post/stream",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      onProgress),
+  modes: () => request<Modes>("/config/modes"),
 
   listCompetitors: () => request<ListResponse<CompetitorRow>>("/config/competitors"),
   createCompetitor: (body: { platform: string; name: string; external_id: string }) =>

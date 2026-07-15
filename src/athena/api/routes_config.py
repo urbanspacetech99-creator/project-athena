@@ -6,13 +6,30 @@ from sqlalchemy.orm import Session
 
 from athena.ai.agents import resolve_agent_prompt
 from athena.api import schemas
-from athena.api.deps import get_session
+from athena.api.deps import get_session, get_settings
+from athena.config import KNOWN_SOURCES, Settings
 from athena.db.models import AgentDefinition, Competitor, SkillDefinition, TrackedKeyword
 from athena.logging_setup import get_logger
 
 log = get_logger("athena.api.config")
 
 router = APIRouter(prefix="/config", tags=["config"])
+
+
+# ---------------------------------------------------------------------------
+# Modes
+# ---------------------------------------------------------------------------
+
+@router.get("/modes", response_model=schemas.ModesOut,
+            summary="Effective live/fixture mode of every data source and AI client")
+def modes(settings: Settings = Depends(get_settings)):
+    """Which backing services are real: source adapters report live|fixture, AI
+    clients report live|fake. Drives the dashboard's status badges. No secrets."""
+    return {
+        "sources": {s: settings.source_mode_for(s) for s in KNOWN_SOURCES},
+        "ai": {"llm": settings.llm_mode, "image": settings.image_mode,
+               "canva": settings.canva_mode},
+    }
 
 
 # ---------------------------------------------------------------------------

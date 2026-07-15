@@ -54,3 +54,9 @@ export interface ZohoChatRow { id: number; source_id: string; transcript: string
 
 /** Research → Generate handoff payload. */
 export interface GenRequest { title: string; context: string; }
+
+export interface Modes {
+  sources: { meta: string; google_reviews: string; google_ads: string; zoho: string };
+  ai: { llm: string; image: string; canva: string };
+}
+export interface StreamProgress { step: number; total: number; label: string }

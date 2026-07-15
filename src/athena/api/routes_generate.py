@@ -1,11 +1,34 @@
+import json
+from collections.abc import Iterable, Iterator
+
 from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from athena.api import schemas
 from athena.api.deps import get_canva_client, get_image_client, get_llm, get_session
 from athena.features import aggregate, drafts, generate
+from athena.logging_setup import get_logger
+
+log = get_logger("athena.api.generate")
 
 router = APIRouter(prefix="/generate", tags=["generate"])
+
+_NDJSON = "application/x-ndjson"
+
+
+def _ndjson(events: Iterable[dict]) -> Iterator[str]:
+    """Serialize event dicts to NDJSON lines. A mid-stream exception becomes a terminal
+    error event — the 200 status is already on the wire by then."""
+    try:
+        # default=str is a safety net for non-JSON values; every event field is a
+        # plain str/list[str] today, so it should never actually fire.
+        for event in events:
+            yield json.dumps(event, default=str) + "\n"
+    except Exception:
+        log.exception("stream failed")
+        yield json.dumps({"event": "error",
+                          "detail": "an internal error occurred while streaming results"}) + "\n"
 
 
 @router.post("/post", response_model=schemas.GeneratePostOut,
@@ -16,6 +39,22 @@ def generate_post(body: schemas.GeneratePostIn, session: Session = Depends(get_s
     """Feature 8: caption -> image-prompt -> image chain, run 3x, each uploaded to Canva."""
     return generate.generate_post(session, llm, image_client, canva,
                                   body.model_dump(), options=body.options)
+
+
+@router.post("/post/stream",
+             summary="Generate post options, streaming NDJSON progress events",
+             response_description="NDJSON: progress events, then one result event")
+def generate_post_stream(body: schemas.GeneratePostIn, session: Session = Depends(get_session),
+                         llm=Depends(get_llm), image_client=Depends(get_image_client),
+                         canva=Depends(get_canva_client)):
+    """Streaming variant of POST /generate/post. One JSON object per line:
+    `{"event":"progress","step":n,"total":options*4,"label":"…"}` per completed step,
+    then `{"event":"result","data":…}` (same shape as /generate/post), or
+    `{"event":"error","detail":"…"}` on failure."""
+    events = generate.generate_post_stream(session, llm, image_client, canva,
+                                           body.model_dump(), options=body.options)
+    return StreamingResponse(_ndjson(events), media_type=_NDJSON,
+                             headers={"X-Accel-Buffering": "no"})
 
 
 @router.post("/drafts", response_model=schemas.DraftOut,
@@ -64,3 +103,15 @@ def delete_draft(draft_id: int, session: Session = Depends(get_session)):
 def recommendations(session: Session = Depends(get_session), llm=Depends(get_llm)):
     """Feature 10: fan-out supervisor across all research sources, synthesised."""
     return aggregate.aggregated_recommendations(session, llm)
+
+
+@router.get("/recommendations/stream",
+            summary="Aggregated recommendations, streaming NDJSON progress events",
+            response_description="NDJSON: progress events, then one result event")
+def recommendations_stream(session: Session = Depends(get_session), llm=Depends(get_llm)):
+    """Streaming variant of GET /generate/recommendations: one progress event per research
+    analyst (4, parallel — order varies) + synthesis (1), then
+    `{"event":"result","data":{titles,prefill_prompt,rationale}}`."""
+    events = aggregate.aggregated_recommendations_stream(session, llm)
+    return StreamingResponse(_ndjson(events), media_type=_NDJSON,
+                             headers={"X-Accel-Buffering": "no"})

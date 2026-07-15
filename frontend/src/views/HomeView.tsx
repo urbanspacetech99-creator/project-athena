@@ -1,8 +1,10 @@
 import { api } from "../api";
 import { ASSET } from "../assets";
 import { AsyncSection } from "../components/AsyncSection";
+import { StatusBadge } from "../components/StatusBadge";
 import { TagPill } from "../components/TagPill";
-import { useApi } from "../hooks/useApi";
+import { useApi, useCachedApi } from "../hooks/useApi";
+import { CACHE_KEYS } from "../lib/cacheKeys";
 import { Ico, type IcoKey } from "../icons";
 import { kpiDeltas, type KpiDeltas } from "../lib/derive";
 import { fmt } from "../lib/fmt";
@@ -62,15 +64,15 @@ function deltaRows(d: KpiDeltas | null) {
 
 export function HomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
   const kpi = useApi(api.weeklyKpi);
-  const engagement = useApi(api.weeklyEngagement);
+  const engagement = useCachedApi(CACHE_KEYS.weeklyEngagement, api.weeklyEngagement);
   const ownPosts = useApi(api.ownPosts);
   const deltas = kpiDeltas(ownPosts.data?.items ?? []);
 
   return (
     <div className="pgwrap">
       <div>
-        <div className="pg-title">Hello, Urban Space team.</div>
-        <div className="pg-sub">Marketing overview for Urban Space Self Storage - this week.</div>
+        <div className="pg-title">Hello, UrbanSpace team.</div>
+        <div className="pg-sub">Marketing overview for UrbanSpace Self Storage - this week.</div>
       </div>
       <div className="hero-grid">
         <div className="hero-card research" onClick={() => onNavigate("research")}>
@@ -84,7 +86,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <img className="hero-illust" src={ASSET.RECT_GENERATE} alt="" />
           <div className="hero-scrim" />
           <div className="hero-title">Generate</div>
-          <div className="hero-desc">Create Instagram &amp; Facebook posts with AI in Urban Space brand voice.</div>
+          <div className="hero-desc">Create Instagram &amp; Facebook posts with AI in UrbanSpace brand voice.</div>
           <div className="hero-btn">Go to Generate <Ico k="arrowR" /></div>
         </div>
       </div>
@@ -92,7 +94,7 @@ export function HomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="card">
           <div className="card-hdr-row">
             <div className="card-ico" style={{ background: "var(--ora-l)", color: "var(--ora)" }}><Ico k="eye" /></div>
-            <div><div className="card-title">KPI</div><div className="card-sub">Performance metrics for this week</div></div>
+            <div><div className="card-title">KPI <StatusBadge kind="data" source="meta" /></div><div className="card-sub">Performance metrics for this week</div></div>
           </div>
           <AsyncSection q={kpi}>
             {(k) => (
@@ -109,8 +111,14 @@ export function HomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
           <div className="ai-card-hdr">
             <div className="ai-card-title-row">
               <div className="ai-star-ico"><Ico k="sparkle" /></div>
-              <div><div className="card-title">AI Weekly Summary</div><div className="card-sub">Auto-generated from this week's performance data</div></div>
+              <div>
+                <div className="card-title">AI Weekly Summary <StatusBadge kind="ai" /></div>
+                <div className="card-sub">Auto-generated from this week's performance data</div>
+              </div>
             </div>
+            <button className="btn btn-white btn-sm" onClick={engagement.reload} aria-label="Refresh AI summary">
+              <Ico k="refresh" />
+            </button>
           </div>
           <AsyncSection q={engagement}>
             {(e) => (

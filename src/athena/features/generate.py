@@ -69,24 +69,42 @@ def build_post_option_graph(llm: LLMClient, image_client: ImageClient,
     return g.compile()
 
 
-def generate_post(session: Session, llm: LLMClient, image_client: ImageClient,
-                  canva: CanvaClient, brief: dict, options: int = 3) -> dict:
-    """Feature 8: run the caption->image_prompt->image chain `options` times, upload each to
-    Canva, persist an audit row per option, and return the option list."""
+_STEP_LABEL = {"caption": "caption written", "image_prompt": "image prompt designed",
+               "image": "image generated"}
+
+
+def generate_post_stream(session: Session, llm: LLMClient, image_client: ImageClient,
+                         canva: CanvaClient, brief: dict, options: int = 3):
+    """Streaming variant of Feature 8: yields a progress event dict per completed step
+    (3 graph nodes + 1 Canva upload per option; total = options*4), then one result
+    event. Persists all rows in a single commit at the end, exactly like generate_post —
+    a mid-stream failure persists nothing."""
     graph = build_post_option_graph(
         llm, image_client,
         caption_system=resolve_agent_prompt(session, "caption_writer"),
         image_prompt_system=resolve_agent_prompt(session, "image_prompt_designer"))
     now = datetime.now(timezone.utc)
+    total = options * 4
+    step = 0
     result: list[dict[str, Any]] = []
     log.info("post generation start", extra={"platform": brief.get("platform"), "options": options})
+    yield {"event": "progress", "step": 0, "total": total, "label": "Starting…"}
     for i in range(options):
-        state = graph.invoke({"brief": brief, "option_index": i,
-                              "caption": None, "image_prompt": None, "image": None})
+        state: dict[str, Any] = {"brief": brief, "option_index": i,
+                                 "caption": None, "image_prompt": None, "image": None}
+        for update in graph.stream(state, stream_mode="updates"):
+            for node, values in update.items():
+                state.update(values)
+                step += 1
+                yield {"event": "progress", "step": step, "total": total,
+                       "label": f"Option {i + 1}: {_STEP_LABEL.get(node, node)}"}
         caption: PostCaption = state["caption"]
         spec: ImagePromptSpec = state["image_prompt"]
         image: GeneratedImage = state["image"]
         handoff = canva.upload_and_edit_url(image, title=f"{brief.get('platform', 'post')}-{i + 1}")
+        step += 1
+        yield {"event": "progress", "step": step, "total": total,
+               "label": f"Option {i + 1}: Canva design created"}
         session.add(GeneratedPost(
             platform=brief["platform"], caption=caption.caption, image_url="",
             image_b64=image.data_b64, canva_edit_url=handoff.edit_url,
@@ -98,4 +116,14 @@ def generate_post(session: Session, llm: LLMClient, image_client: ImageClient,
             "canva_edit_url": handoff.edit_url, "visual_style": spec.visual_style})
     session.commit()
     log.info("post generation done", extra={"options": len(result)})
-    return {"options": result}
+    yield {"event": "result", "data": {"options": result}}
+
+
+def generate_post(session: Session, llm: LLMClient, image_client: ImageClient,
+                  canva: CanvaClient, brief: dict, options: int = 3) -> dict:
+    """Feature 8: run the caption->image_prompt->image chain `options` times, upload each to
+    Canva, persist an audit row per option, and return the option list."""
+    for event in generate_post_stream(session, llm, image_client, canva, brief, options):
+        if event["event"] == "result":
+            return event["data"]
+    raise RuntimeError("post generation stream ended without a result")

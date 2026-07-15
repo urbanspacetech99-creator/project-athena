@@ -74,7 +74,38 @@ def build_aggregator_graph(session: Session, llm: LLMClient):
     return g.compile()
 
 
+_NODE_LABEL = {"internet_trends": "Analyzed internet trends",
+               "customer_insights": "Analyzed customer chats",
+               "social_reviews": "Analyzed social & reviews",
+               "competitor": "Analyzed competitors",
+               "synthesis": "Synthesized recommendations"}
+
+
+def aggregated_recommendations_stream(session: Session, llm: LLMClient):
+    """Streaming variant of Feature 10: one progress event per completed node
+    (4 parallel analysts + synthesis; total = 5), then one result event. Analyst
+    events may arrive in any order — they run on real threads in one superstep."""
+    graph = build_aggregator_graph(session, llm)
+    total = 5
+    step = 0
+    rec: AggregatedRecommendations | None = None
+    yield {"event": "progress", "step": 0, "total": total, "label": "Starting…"}
+    for update in graph.stream({"findings": [], "result": None}, stream_mode="updates"):
+        for node, values in update.items():
+            step += 1
+            yield {"event": "progress", "step": step, "total": total,
+                   "label": _NODE_LABEL.get(node, node)}
+            if node == "synthesis":
+                rec = values["result"]
+    if rec is None:
+        raise RuntimeError("aggregator stream ended without a synthesis result")
+    yield {"event": "result",
+           "data": {"titles": rec.titles, "prefill_prompt": rec.prefill_prompt,
+                    "rationale": rec.rationale}}
+
+
 def aggregated_recommendations(session: Session, llm: LLMClient) -> dict:
-    state = build_aggregator_graph(session, llm).invoke({"findings": [], "result": None})
-    rec = state["result"]
-    return {"titles": rec.titles, "prefill_prompt": rec.prefill_prompt, "rationale": rec.rationale}
+    for event in aggregated_recommendations_stream(session, llm):
+        if event["event"] == "result":
+            return event["data"]
+    raise RuntimeError("aggregator stream ended without a result")

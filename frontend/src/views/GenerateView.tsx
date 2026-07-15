@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { api } from "../api";
 import { AsyncSection } from "../components/AsyncSection";
+import { ProgressBar } from "../components/ProgressBar";
+import { StatusBadge } from "../components/StatusBadge";
 import { SuggestedPosts } from "../components/SuggestedPosts";
 import { TagPill } from "../components/TagPill";
-import { useApi } from "../hooks/useApi";
+import { useApi, useCachedApi } from "../hooks/useApi";
+import { CACHE_KEYS } from "../lib/cacheKeys";
+import { useModes } from "../modes";
 import { Ico } from "../icons";
 import { downloadPostPNG } from "../lib/exportPng";
 import { useToast } from "../toast";
-import type { GenRequest, PostOption } from "../types";
+import type { GenRequest, PostOption, StreamProgress } from "../types";
 
 const PLATFORMS = ["Instagram", "Facebook"] as const;
 const TONES = ["Friendly", "Professional", "Urgent", "Funny"] as const;
@@ -41,7 +45,9 @@ function ToggleChip({ label, on, onToggle }: { label: string; on: boolean; onTog
 export function GenerateView({ request }: { request: GenRequest | null }) {
   const toast = useToast();
   const drafts = useApi(api.listDrafts);
-  const recos = useApi(api.recommendations);
+  const [recoProgress, setRecoProgress] = useState<StreamProgress | null>(null);
+  const recos = useCachedApi(CACHE_KEYS.recommendations, () => api.recommendationsStream(setRecoProgress));
+  const modes = useModes();
 
   const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>("Instagram");
   const [tone, setTone] = useState<(typeof TONES)[number]>("Friendly");
@@ -56,26 +62,29 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
   const [genResult, setGenResult] =
     useState<{ platform: (typeof PLATFORMS)[number]; options: PostOption[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [genProgress, setGenProgress] = useState<StreamProgress | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCaption, setEditCaption] = useState("");
 
   const doGenerate = async () => {
     setBusy(true);
+    setGenProgress(null);
     try {
       const prefill = [context, prompt.trim(), `Target audience: ${audience}`]
         .filter(Boolean).join("\n\n");
-      const res = await api.generatePost({
+      const res = await api.generatePostStream({
         platform: platform.toLowerCase(), tone: tone.toLowerCase(), length: length.toLowerCase(),
         prefill_prompt: prefill, visual_style: style,
         include_hashtags: flags.hashtags, include_cta: flags.cta,
         include_emoji: flags.emoji, include_pricing: flags.pricing, options: 3,
-      });
+      }, setGenProgress);
       setGenResult({ platform, options: res.options });
       toast(`Generated ${res.options.length} options`);
     } catch (e) {
       toast(`Generation failed: ${e instanceof Error ? e.message : e}`);
     } finally {
       setBusy(false);
+      setGenProgress(null);
     }
   };
 
@@ -122,7 +131,7 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
     <div className="pgwrap">
       <div>
         <div className="pg-title" style={{ fontSize: 34 }}>Generate</div>
-        <div className="pg-sub">Create a post — AI writes it in Urban Space's brand voice.</div>
+        <div className="pg-sub">Create a post — AI writes it in UrbanSpace's brand voice.</div>
       </div>
 
       <div className="card">
@@ -181,13 +190,21 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
         <button className="btn btn-blue" onClick={doGenerate} disabled={busy}>
           <Ico k="sparkle" /> {busy ? "Generating…" : "Generate 3 options"}
         </button>
+        {busy && <ProgressBar progress={genProgress} />}
       </div>
 
       {genResult && (
         <>
           <div className="res-hdr-row" style={{ alignItems: "center" }}>
             <div>
-              <div className="card-title" style={{ fontSize: 19 }}>Generated options</div>
+              <div className="card-title" style={{ fontSize: 19 }}>
+                Generated options <StatusBadge kind="ai" />
+                {modes && modes.ai.image !== "live" && (
+                  <TagPill style={{ background: "var(--gold-l)", color: "var(--gold-d)", marginLeft: 8 }}>
+                    Sample images
+                  </TagPill>
+                )}
+              </div>
               <div className="card-sub">Save, download as PNG, or open in Canva to edit</div>
             </div>
             <button className="btn btn-white btn-sm" onClick={doGenerate} disabled={busy}>
@@ -197,7 +214,8 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
           <div className="gdraft-grid" style={{ marginTop: 14 }}>
             {genResult.options.map((o, i) => (
               <div className="gdraft-card" key={i}>
-                <div className="gdraft-hdr" style={{ background: platformColor(genResult.platform), padding: 0 }}>
+                <div className={`gdraft-hdr${o.image_b64 ? " has-img" : ""}`}
+                  style={{ background: platformColor(genResult.platform), padding: 0 }}>
                   {o.image_b64
                     ? <img src={`data:${o.mime_type};base64,${o.image_b64}`} alt={`Draft ${i + 1} visual`}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -271,11 +289,12 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
         </AsyncSection>
       </div>
 
-      <AsyncSection q={recos}>
+      <AsyncSection q={recos} progress={recoProgress}>
         {(r) => (
           <SuggestedPosts title="AI Recommendations — one-click prefill"
             sub={r.rationale} titles={r.titles} subLabel="From this week's research"
-            onGenerate={(title) => { setPrompt(title); setContext(r.prefill_prompt); }} />
+            onGenerate={(title) => { setPrompt(title); setContext(r.prefill_prompt); }}
+            onRefresh={() => { setRecoProgress(null); recos.reload(); }} />
         )}
       </AsyncSection>
     </div>

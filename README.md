@@ -1,15 +1,82 @@
-# Athena — AI Marketing Pipeline
+# Athena — AI Marketing Pipeline for UrbanSpace
 
-Python + LangGraph + FastAPI + Postgres pipeline. See `docs/superpowers/specs/` (local) for design.
+Backend + dashboard that ingests UrbanSpace's marketing data (Meta posts/comments, Google
+Business reviews, Google Ads keyword volumes, Zoho CRM chat transcripts), runs AI research and
+content generation over it (Claude for text, Gemini for images, Canva for the editing handoff),
+and serves the results as a marketing dashboard.
+Python + FastAPI + LangGraph + Postgres; React + TypeScript dashboard.
 
-## Dev quickstart
+**Quick links**
+
+| What | Where |
+|---|---|
+| Marketing dashboard | `http://localhost:8000/` (bundled build) · `http://localhost:5174` (Vite dev) |
+| Interactive API docs (Swagger UI) | `http://localhost:8000/docs` |
+| Raw OpenAPI schema | `http://localhost:8000/openapi.json` |
+| Deployment guide | [`deploy/README.md`](deploy/README.md) |
+| Architecture diagram | `docs/diagrams/architecture.drawio` |
+| Live-credential validation checklist | `docs/LIVE_API_VALIDATION.md` |
+
+## For the marketing team
+
+The dashboard has four views:
+
+- **Home** — weekly KPI tiles (views, likes, interactions, posts) and an AI Weekly Summary that flags your top-performing post and surfaces themes from this week's post comments.
+- **Research** — pick your data sources, then four tabs: **Internet Trends** (keyword search volumes), **Customer Chats** (questions customers ask + AI insights from Zoho chats), **Social Media** (post performance, comments, Google reviews), and **Competitor Analysis** (tracked competitors' activity + AI strategy). Every AI section offers suggested post titles you can send to Generate with one click.
+- **Generate** — brief the AI (platform, tone, length, audience, visual style) and get 3 post options with captions and images; download as PNG, save to drafts, or open in Canva. AI Recommendations synthesize all research sources into ready-to-use ideas.
+- **Settings** — manage tracked competitors, keywords, and the AI agents' prompts.
+
+**Live vs Fixture badges.** Each section carries a small dot: green **Live** means real data from the connected service; amber **Fixture** means built-in sample data (shaped like the real thing — used for demos and while credentials are pending). AI sections show **Live AI** (Claude) or **Sample AI** (deterministic placeholder). Which services are live is server configuration — ask your developer.
+
+**Freshness & progress.** AI answers are cached in your browser for 24 hours, so repeat visits are instant and don't re-spend AI credits. Use the ↻ refresh buttons (Research header, AI Weekly Summary, AI Recommendations) to force fresh analysis. Long AI jobs — generating posts, building recommendations — show a real progress bar with step labels.
+
+## For developers
+
+### Quickstart
+
 ```bash
 uv sync --extra dev
-cp .env.example .env
+cp .env.example .env          # defaults: fixture data, fake AI — runs with no keys
 docker compose up -d db
-uv run alembic upgrade head
-uv run uvicorn athena.api.app:app --reload
+uv run uvicorn athena.api.app:app --reload   # auto-creates + migrates the DB on startup
+# dashboard (dev):
+cd frontend && npm install && npm run dev     # http://localhost:5174, proxies to :8000
 ```
+
+To serve the dashboard from the API instead of the Vite dev server, build it once
+(`cd frontend && npm run build`) — it is served at `/` when `frontend/dist` exists, and
+turned off with `SERVE_FRONTEND=false`.
+
+### Tests & lint
+
+```bash
+uv run pytest            # backend — needs Docker (testcontainers), or set TEST_DATABASE_URL to a Postgres URL
+uv run ruff check .
+cd frontend && npx vitest run
+```
+
+`TEST_DATABASE_URL` (an env var, or a `TEST_DATABASE_URL=` line in `.env`) points the backend
+tests at an existing Postgres and skips spinning up a throwaway container — useful where Docker
+isn't reachable.
+
+### Configuration
+
+Everything is env-driven via `.env` — see `.env.example` (grouped and commented). Highlights:
+
+| Env | Meaning |
+|---|---|
+| `DATABASE_URL` | Postgres URL; `DB_AUTO_CREATE=true` (default) creates the DB if missing and migrates to head on startup |
+| `SOURCE_MODE` + `META_`/`GOOGLE_REVIEWS_`/`GOOGLE_ADS_`/`ZOHO_SOURCE_MODE` | `fixture` \| `live` per data source (per-source overrides win) |
+| `LLM_MODE` + `CLAUDE_API_KEY` | `fake` \| `live` text AI (Claude, default model `claude-sonnet-5`) |
+| `IMAGE_MODE` + `GEMINI_API_KEY` | `fake` \| `live` image AI (Gemini) |
+| `CANVA_MODE` + Canva tokens | `fake` \| `live` Canva Connect handoff |
+| `FRONTEND_DIST`, `SERVE_FRONTEND` | Where the built dashboard lives; whether to serve it at `/` |
+
+The effective mode of every source and AI client is exposed (no secrets) at `GET /config/modes`,
+which drives the dashboard's Live/Fixture badges.
+
+The full REST API is documented interactively at `/docs` (Swagger UI) and `/openapi.json`; the
+reference below covers every endpoint by tag.
 
 ## Data & Ingestion API
 
@@ -78,6 +145,16 @@ Every endpoint above except `/research/customer-questions` returns the shared Ge
 | PATCH | /generate/drafts/{id} | Edit a saved draft's caption and/or platform (404 if not found) |
 | DELETE | /generate/drafts/{id} | Delete a saved draft (204 on success, 404 if not found) |
 | GET | /generate/recommendations | Aggregated cross-source recommendations: 5 titles + prefill prompt + rationale |
+| POST | /generate/post/stream | Streaming variant of `/generate/post` — NDJSON progress events, then a result event |
+| GET | /generate/recommendations/stream | Streaming variant of `/generate/recommendations` — 4 analyst events + synthesis, then result |
+
+### Streaming variants
+The two `/stream` endpoints emit `application/x-ndjson` — one JSON object per line:
+`{"event":"progress","step":n,"total":N,"label":"Option 2: image generated"}` per completed
+step, then `{"event":"result","data":…}` (same payload as the non-streaming endpoint), or
+`{"event":"error","detail":"…"}` on failure (nothing is persisted on a failed run). The
+dashboard uses them to render real progress bars; the non-streaming endpoints remain for
+simple callers.
 
 ### `POST /generate/post`
 Request body (all fields optional; defaults shown):
@@ -130,6 +207,7 @@ defaults on first boot (`athena.db.seed`) and editable from then on.
 | POST | /config/skills | Create a new skill fragment |
 | PATCH | /config/skills/{key} | Update a skill fragment's name and/or content |
 | DELETE | /config/skills/{key} | Delete a skill fragment and detach it from every agent |
+| GET | /config/modes | Effective live/fixture mode of every data source + AI client (drives the dashboard badges; no secrets) |
 
 ## Frontends
 

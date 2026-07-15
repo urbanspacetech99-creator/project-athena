@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ASSET } from "./assets";
+import { ModesProvider } from "./modes";
 import { ToastProvider } from "./toast";
 import { GenerateView } from "./views/GenerateView";
 import { HomeView } from "./views/HomeView";
@@ -28,6 +29,7 @@ export function App() {
 
   return (
     <ToastProvider>
+      <ModesProvider>
       <div className="shell">
         <nav className={`sidebar ${collapsed ? "collapsed" : ""}`}>
           <div className="sb-toprow">
@@ -61,6 +63,7 @@ export function App() {
           {view === "settings" && <SettingsView />}
         </main>
       </div>
+      </ModesProvider>
     </ToastProvider>
   );
 }

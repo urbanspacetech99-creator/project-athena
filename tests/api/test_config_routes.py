@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from athena.api import deps
 from athena.api.app import create_app
+from athena.config import Settings
 
 
 def _client(session):
@@ -102,3 +103,22 @@ def test_config_endpoints_documented():
     for p in ["/config/competitors", "/config/keywords", "/config/agents/{key}",
               "/config/skills", "/config/agents/{key}/effective-prompt"]:
         assert p in spec["paths"]
+
+
+def test_modes_endpoint_reflects_settings():
+    app = create_app()
+    app.dependency_overrides[deps.get_settings] = lambda: Settings(
+        db_auto_create=False, source_mode="fixture", zoho_source_mode="live",
+        llm_mode="live", image_mode="fake", canva_mode="live")
+    body = TestClient(app).get("/config/modes").json()
+    # Exact equality also proves no extra (secret-bearing) fields leak into the payload.
+    assert body == {
+        "sources": {"meta": "fixture", "google_reviews": "fixture",
+                    "google_ads": "fixture", "zoho": "live"},
+        "ai": {"llm": "live", "image": "fake", "canva": "live"},
+    }
+
+
+def test_modes_endpoint_documented():
+    spec = TestClient(create_app()).get("/openapi.json").json()
+    assert "/config/modes" in spec["paths"]

@@ -51,7 +51,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # The empty-string check matters: Path("") is the CWD and is_dir() is True,
     # which would mount the entire working directory at "/".
     dist = Path(settings.frontend_dist)
-    if settings.frontend_dist and dist.is_dir():
+    if not settings.serve_frontend:
+        log.info("dashboard serving disabled", extra={"serve_frontend": False})
+    elif settings.frontend_dist and dist.is_dir():
         from fastapi.staticfiles import StaticFiles
         # Mounted last so every API route above takes priority — add new routers ABOVE this block.
         app.mount("/", StaticFiles(directory=dist, html=True), name="dashboard")

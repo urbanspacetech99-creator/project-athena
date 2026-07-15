@@ -1,9 +1,14 @@
 import type { ReactNode } from "react";
 import type { Query } from "../hooks/useApi";
+import type { StreamProgress } from "../types";
+import { ProgressBar } from "./ProgressBar";
 
-/** Wraps one data section: independent loading / error+retry / success states. */
-export function AsyncSection<T>({ q, children }: { q: Query<T>; children: (data: T) => ReactNode }) {
-  if (q.loading) return <div className="async-note">Loading…</div>;
+/** Wraps one data section: independent loading / error+retry / success states.
+ *  Pass `progress` (from a streaming call) to upgrade the loading bar to determinate. */
+export function AsyncSection<T>({ q, progress, children }: {
+  q: Query<T>; progress?: StreamProgress | null; children: (data: T) => ReactNode;
+}) {
+  if (q.loading) return <ProgressBar progress={progress} />;
   if (q.error !== undefined) {
     return (
       <div className="async-note err">

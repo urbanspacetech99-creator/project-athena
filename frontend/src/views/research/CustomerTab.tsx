@@ -1,8 +1,10 @@
 import { api } from "../../api";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
+import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
-import { useApi } from "../../hooks/useApi";
+import { useApi, useCachedApi } from "../../hooks/useApi";
+import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { Ico } from "../../icons";
 
 function RankedList({ items, light }: { items: string[]; light?: boolean }) {
@@ -21,7 +23,7 @@ function RankedList({ items, light }: { items: string[]; light?: boolean }) {
 
 export function CustomerTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   const questions = useApi(api.customerQuestions);
-  const insights = useApi(api.customerInsights);
+  const insights = useCachedApi(CACHE_KEYS.customerInsights, api.customerInsights);
   const chats = useApi(api.zohoChats);
   // `insights` loading/error is surfaced once, in the Service Analysis card;
   // the lower block gates on data and renders nothing until it arrives.
@@ -32,8 +34,8 @@ export function CustomerTab({ onGenerate }: { onGenerate: (title: string, contex
       <div className="rs-banner" style={{ marginBottom: 16 }}>
         <div className="rs-banner-ico"><Ico k="sparkle" /></div>
         <div className="rs-banner-txt">
-          <b>About this data</b><br />
-          Analysed from Urban Space's customer chats linked via ZOHO CRM.
+          <b>About this data</b> <StatusBadge kind="data" source="zoho" /><br />
+          Analysed from UrbanSpace's customer chats linked via ZOHO CRM.
           {chats.data ? ` Based on ${chats.data.count} customer chats.` : ""} Data refreshes weekly.
         </div>
       </div>
@@ -42,7 +44,7 @@ export function CustomerTab({ onGenerate }: { onGenerate: (title: string, contex
           <div className="ct-title-row">
             <span className="ct-title-ico"><Ico k="question" /></span>
             <div>
-              <div className="ct-title" style={{ color: "#4A3200" }}>Common questions before booking</div>
+              <div className="ct-title" style={{ color: "#4A3200" }}>Common questions before booking <StatusBadge kind="data" source="zoho" /></div>
               <div className="ct-sub" style={{ color: "#7A5A16", marginBottom: 0 }}>Questions customers ask in chats</div>
             </div>
           </div>
@@ -58,7 +60,7 @@ export function CustomerTab({ onGenerate }: { onGenerate: (title: string, contex
           <div className="ct-title-row">
             <span className="ct-title-ico" style={{ color: "#fff" }}><Ico k="service" /></span>
             <div>
-              <div className="ct-title" style={{ color: "#fff" }}>Service Analysis</div>
+              <div className="ct-title" style={{ color: "#fff" }}>Service Analysis <StatusBadge kind="ai" light /></div>
               <div className="ct-sub" style={{ color: "#FFE9C2", marginBottom: 0 }}>Top services requested, ranked by demand</div>
             </div>
           </div>

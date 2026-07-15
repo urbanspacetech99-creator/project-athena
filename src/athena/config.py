@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_KNOWN_SOURCES = {"meta", "google_reviews", "google_ads", "zoho"}
+KNOWN_SOURCES = ("meta", "google_reviews", "google_ads", "zoho")
+_KNOWN_SOURCES = set(KNOWN_SOURCES)
 
 
 class Settings(BaseSettings):
@@ -21,6 +22,10 @@ class Settings(BaseSettings):
     # at "/" when present; resolved relative to the process CWD (repo root in dev,
     # /app in Docker). Empty/missing directory means API-only serving.
     frontend_dist: str = "frontend/dist"
+
+    # Master switch for serving the dashboard at "/". Set false to run API-only
+    # even when a built frontend_dist directory exists.
+    serve_frontend: bool = True
 
     # per-source overrides; empty string means "use global"
     meta_source_mode: str = ""

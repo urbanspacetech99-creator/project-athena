@@ -9,12 +9,12 @@ def _settings(**kw) -> Settings:
 
 
 def test_serves_dashboard_when_dist_exists(tmp_path):
-    (tmp_path / "index.html").write_text("<!doctype html><title>Urban Space</title>", encoding="utf-8")
+    (tmp_path / "index.html").write_text("<!doctype html><title>UrbanSpace</title>", encoding="utf-8")
     app = create_app(_settings(frontend_dist=str(tmp_path)))
     client = TestClient(app)
     res = client.get("/")
     assert res.status_code == 200
-    assert "Urban Space" in res.text
+    assert "UrbanSpace" in res.text
 
 
 def test_api_routes_take_priority_over_static(tmp_path):
@@ -52,3 +52,20 @@ def test_serves_nested_assets(tmp_path):
     res = client.get("/assets/app.js")
     assert res.status_code == 200
     assert res.text == "console.log(1)"
+
+
+def test_flag_disables_dashboard_serving(tmp_path):
+    (tmp_path / "index.html").write_text("<html></html>", encoding="utf-8")
+    app = create_app(_settings(frontend_dist=str(tmp_path), serve_frontend=False))
+    client = TestClient(app)
+    assert client.get("/").status_code == 404
+    assert client.get("/health").status_code == 200
+
+
+def test_flag_env_string_disables_dashboard_serving(tmp_path, monkeypatch):
+    (tmp_path / "index.html").write_text("<html></html>", encoding="utf-8")
+    monkeypatch.setenv("SERVE_FRONTEND", "false")
+    app = create_app(_settings(frontend_dist=str(tmp_path)))
+    client = TestClient(app)
+    assert client.get("/").status_code == 404
+    assert client.get("/health").status_code == 200

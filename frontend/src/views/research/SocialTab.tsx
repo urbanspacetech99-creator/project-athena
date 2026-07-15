@@ -2,9 +2,11 @@ import { api } from "../../api";
 import { ASSET } from "../../assets";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
+import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
 import { TagPill } from "../../components/TagPill";
-import { useApi } from "../../hooks/useApi";
+import { useApi, useCachedApi } from "../../hooks/useApi";
+import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { Ico } from "../../icons";
 import { newestFirst } from "../../lib/derive";
 import { fmt } from "../../lib/fmt";
@@ -29,7 +31,7 @@ function RankRows({ posts }: { posts: OwnPostRow[] }) {
 
 export function SocialTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   // own_posts window_date is the post's publish date (stable across re-ingests), so rows never duplicate per week — no dedupe needed, unlike keyword volumes.
-  const social = useApi(api.socialReviews);
+  const social = useCachedApi(CACHE_KEYS.socialReviews, api.socialReviews);
   const posts = useApi(api.ownPosts);
   const comments = useApi(api.postComments);
   const reviews = useApi(api.googleReviews);
@@ -47,7 +49,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
 
   return (
     <>
-      <div className="ct-title" style={{ marginBottom: 2 }}>Engagement</div>
+      <div className="ct-title" style={{ marginBottom: 2 }}>Engagement <StatusBadge kind="data" source="meta" /></div>
       <div className="ct-sub" style={{ marginBottom: 14 }}>
         Views and likes of your posts this week{social.data ? ` · ${fmt(social.data.views)} total weekly views` : ""}.
       </div>
@@ -55,6 +57,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
         <div className="soc-card">
           <div className="soc-hdr" style={{ background: "#3E6FB0" }}>
             <span>Facebook</span><small>{posts.data ? `${fb.length} posts` : "…"}</small>
+            <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="soc-preview-wrap" style={{ background: "#3E6FB0" }}>
             <img className="soc-preview-img" src={ASSET.FB_PREVIEW} alt="Facebook page preview" />
@@ -64,6 +67,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
         <div className="soc-card">
           <div className="soc-hdr" style={{ background: "#C0392B" }}>
             <span>Instagram</span><small>{posts.data ? `${ig.length} posts` : "…"}</small>
+            <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="soc-preview-wrap" style={{ background: "#C0392B" }}>
             <img className="soc-preview-img" src={ASSET.IG_PREVIEW} alt="Instagram profile preview" />
@@ -77,6 +81,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
         <div className="cm-card">
           <div className="cm-hdr" style={{ background: "#3E6FB0" }}>
             <span>Post comments</span><small>{comments.data?.count ?? "…"} total</small>
+            <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="cm-body">
             <AsyncSection q={comments}>
@@ -98,6 +103,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
                   <div className="cm-hdr" style={{ background: "#2F7A3D" }}>
                     {/* avg and count both describe the fetched tail window; r.count is all-time and only used when there is nothing to average */}
                     <span>Google</span><small>{avg ? `★${avg} · ${r.items.length}` : `${r.count} reviews`}</small>
+                    <StatusBadge kind="data" source="google_reviews" light />
                   </div>
                   <div className="cm-body">
                     {r.items.length === 0

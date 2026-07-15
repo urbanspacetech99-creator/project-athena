@@ -166,7 +166,7 @@ class GeneratePostIn(BaseModel):
     include_cta: bool = True
     include_emoji: bool = False
     include_pricing: bool = False
-    options: int = 3
+    options: int = Field(default=3, ge=1)
 
 
 class PostOptionOut(BaseModel):
@@ -288,3 +288,21 @@ class SkillOut(_ORM):
 class SkillDeleteOut(BaseModel):
     deleted: str
     detached_from: list[str]
+
+
+class SourceModesOut(BaseModel):
+    meta: str
+    google_reviews: str
+    google_ads: str
+    zoho: str
+
+
+class AiModesOut(BaseModel):
+    llm: str
+    image: str
+    canva: str
+
+
+class ModesOut(BaseModel):
+    sources: SourceModesOut
+    ai: AiModesOut

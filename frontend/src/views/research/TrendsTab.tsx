@@ -1,7 +1,9 @@
 import { api } from "../../api";
 import { AsyncSection } from "../../components/AsyncSection";
+import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
-import { useApi } from "../../hooks/useApi";
+import { useApi, useCachedApi } from "../../hooks/useApi";
+import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { keywordChanges, type KeywordChange } from "../../lib/derive";
 
 function ChangeTag({ ch }: { ch: KeywordChange | undefined }) {
@@ -15,7 +17,7 @@ function ChangeTag({ ch }: { ch: KeywordChange | undefined }) {
 }
 
 export function TrendsTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
-  const trends = useApi(api.internetTrends);
+  const trends = useCachedApi(CACHE_KEYS.internetTrends, api.internetTrends);
   const history = useApi(api.keywordVolumes);
 
   return (
@@ -32,7 +34,7 @@ export function TrendsTab({ onGenerate }: { onGenerate: (title: string, context:
         return (
           <>
             <div className="ct-card" style={{ marginBottom: 16 }}>
-              <div className="ct-title">Weekly Search Volume in Singapore</div>
+              <div className="ct-title">Weekly Search Volume in Singapore <StatusBadge kind="data" source="google_ads" /></div>
               <div className="ct-sub">Google search volume · tracked keywords{changes ? " · % change is week-over-week" : ""}</div>
               {sorted.map((k) => (
                 <div className="bar-row" key={k.keyword}>
@@ -50,7 +52,7 @@ export function TrendsTab({ onGenerate }: { onGenerate: (title: string, context:
               ))}
             </div>
             <div className="ct-card" style={{ marginBottom: 16 }}>
-              <div className="ct-title">Keyword ranking</div>
+              <div className="ct-title">Keyword ranking <StatusBadge kind="data" source="google_ads" /></div>
               <div className="ct-sub">Exact search volume for each tracked keyword</div>
               {sorted.map((k, i) => (
                 <div className="kw-row" key={k.keyword}>

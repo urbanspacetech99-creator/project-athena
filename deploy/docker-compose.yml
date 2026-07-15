@@ -1,0 +1,133 @@
+version: "3"
+
+# Athena — production deployment compose.
+# Style matches the existing UrbanSpace prod stack (external urbanspace_intra
+# network, container_name/hostname, expose-only ports, restart: always).
+#
+# The `api` and `worker` services run the SAME image (athena-backend:0.1.0),
+# just different commands. They share one environment block via the YAML anchor
+# `&app_env` below — fill each value ONCE in `x-app-env` and both pick it up.
+#
+# Prereqs on the server (see deploy/README.md):
+#   docker network create urbanspace_intra
+#   docker load -i athena-backend-0.1.0.tar
+
+# ---- shared application environment (fill values here once) ------------------
+# Only the names are provided; fill in secrets/values yourself. Vars with a safe
+# built-in default are marked "(optional)" — leave blank to use the default.
+x-app-env: &app_env
+  # Core
+  - DATABASE_URL=            # postgresql+psycopg://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres:5432/<POSTGRES_DB>
+  - SOURCE_MODE=             # fixture | live   (global data-source mode)
+  - LOG_LEVEL=               # (optional) default INFO
+  - DB_AUTO_CREATE=          # (optional) true|false, default true — auto-create DB + migrate to head on api startup
+  - FRONTEND_DIST=           # (optional) leave blank — dashboard is bundled at /app/frontend/dist
+  - SERVE_FRONTEND=          # (optional) true|false, default true — false = API-only, no dashboard at "/"
+  # Per-source overrides (blank = use SOURCE_MODE)
+  - META_SOURCE_MODE=
+  - GOOGLE_REVIEWS_SOURCE_MODE=
+  - GOOGLE_ADS_SOURCE_MODE=
+  - ZOHO_SOURCE_MODE=
+  # Feature flags
+  - COMPETITOR_LIVE_ACCESS_ENABLED=   # (optional) true|false, default false
+  # AI: text (Anthropic Claude)
+  - CLAUDE_API_KEY=
+  - CLAUDE_MODEL=            # (optional) default claude-sonnet-5
+  - LLM_MODE=                # fake | live
+  # AI: images (Google Gemini)
+  - GEMINI_API_KEY=
+  - GEMINI_IMAGE_MODEL=      # (optional) default gemini-2.5-flash-image
+  - IMAGE_MODE=              # fake | live
+  # Canva Connect
+  - CANVA_MODE=              # fake | live
+  - CANVA_CLIENT_ID=
+  - CANVA_CLIENT_SECRET=
+  - CANVA_ACCESS_TOKEN=
+  - CANVA_REFRESH_TOKEN=
+  # Meta Graph
+  - META_PAGE_ID=
+  - META_PAGE_TOKEN=
+  - META_IG_USER_ID=
+  # Google (OAuth shared by reviews + ads)
+  - GOOGLE_OAUTH_CLIENT_ID=
+  - GOOGLE_OAUTH_CLIENT_SECRET=
+  - GOOGLE_REFRESH_TOKEN=
+  - GBP_ACCOUNT_ID=
+  - GBP_LOCATION_ID=
+  - GADS_DEVELOPER_TOKEN=
+  - GADS_LOGIN_CUSTOMER_ID=
+  - GADS_CUSTOMER_ID=
+  # Zoho CRM
+  - ZOHO_CLIENT_ID=
+  - ZOHO_CLIENT_SECRET=
+  - ZOHO_REFRESH_TOKEN=
+  - ZOHO_DC=                 # (optional) default com
+  - ZOHO_MODULE=             # (optional) default Call_Logs
+  - ZOHO_TRANSCRIPT_FIELD=   # (optional) default Transcript_Text
+
+volumes:
+  data:
+    driver: local
+
+services:
+  postgres:
+    image: postgres:18.1-alpine3.23
+    container_name: postgres
+    hostname: postgres
+    networks:
+      - urbanspace_intra
+    environment:
+      - POSTGRES_USER=
+      - POSTGRES_PASSWORD=
+      - POSTGRES_DB=
+    expose:
+      - "5432"
+    volumes:
+      - data:/var/lib/postgresql/
+    restart: always
+
+  adminer:
+    image: adminer:5.4.1-standalone
+    container_name: adminer
+    hostname: adminer
+    networks:
+      - urbanspace_intra
+    restart: always
+    expose:
+      - "8080"
+    depends_on:
+      - postgres
+
+  api:
+    image: athena-backend:0.1.0
+    container_name: athena-api
+    hostname: athena-api
+    command: uvicorn athena.api.app:app --host 0.0.0.0 --port 8000
+    networks:
+      - urbanspace_intra
+    environment: *app_env
+    # Serves BOTH the REST API and the bundled marketing dashboard at "/".
+    # Internal-only; route external traffic through your reverse proxy on
+    # urbanspace_intra (target athena-api:8000), or add a `ports:` mapping.
+    expose:
+      - "8000"
+    depends_on:
+      - postgres
+    restart: always
+
+  worker:
+    image: athena-backend:0.1.0
+    container_name: athena-worker
+    hostname: athena-worker
+    command: python -m athena.worker.main
+    networks:
+      - urbanspace_intra
+    environment: *app_env
+    depends_on:
+      - postgres
+    restart: always
+
+networks:
+  urbanspace_intra:
+    external:
+      name: urbanspace_intra
