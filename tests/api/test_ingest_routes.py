@@ -16,6 +16,15 @@ def test_unknown_source_400(client_with_db):
     assert client_with_db.post("/ingest/nope").status_code == 400
 
 
+def test_trigger_competitor_reviews_fixture_mode(client_with_db):
+    resp = client_with_db.post("/ingest/competitor_reviews")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["source"] == "competitor_reviews"
+    assert body["total"] > 0
+    assert body["total"] == body["inserted"] + body["updated"]
+
+
 def test_trigger_competitor_surfaces_failed_name(client_with_db, monkeypatch):
     """A competitor whose fetch blows up must be reported by name in `failed`,
     not just swallowed into the totals -- proves the job-dict -> IngestResponse wiring."""

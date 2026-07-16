@@ -14,6 +14,7 @@ _JOBS = {
     "google_reviews": ingestion_jobs.ingest_google_reviews,
     "google_ads": ingestion_jobs.ingest_keyword_volumes,
     "zoho": ingestion_jobs.ingest_zoho_chats,
+    "competitor_reviews": ingestion_jobs.ingest_competitor_reviews,
 }
 
 
@@ -41,7 +42,7 @@ def _to_response(source: str, res) -> schemas.IngestResponse:
 def trigger_ingestion(source: str, factory=Depends(get_session_factory),
                       settings: Settings = Depends(get_settings)):
     """Run the ingestion job for `source` on demand. Valid sources:
-    meta, competitor, google_reviews, google_ads, zoho."""
+    meta, competitor, google_reviews, google_ads, zoho, competitor_reviews."""
     if source not in _JOBS:
         raise HTTPException(status_code=400, detail=f"unknown source: {source}")
     res = _JOBS[source](factory, settings)

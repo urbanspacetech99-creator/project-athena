@@ -12,6 +12,8 @@ COMPETITORS = [
     {"platform": "facebook", "name": "StorHub", "external_id": ""},
     {"platform": "instagram", "name": "Extra Space Asia", "external_id": "extraspaceasia"},
     {"platform": "instagram", "name": "StorHub", "external_id": "storhub_sg"},
+    {"platform": "google", "name": "Extra Space Asia", "external_id": ""},
+    {"platform": "google", "name": "StorHub", "external_id": ""},
 ]
 
 KEYWORDS = [
@@ -165,11 +167,14 @@ AGENTS = [
         "key": "competitor_analyst",
         "name": "Competitor analyst",
         "system_prompt": (
-            "You analyse competitors of UrbanSpace, a Singapore integrated space provider "
-            "(Self Storage, Workspace, Fulfilment, Valet Storage), from their public posts "
-            "and the comments on them. Summarise their activity, audience-revealed "
-            "weaknesses, and gaps UrbanSpace can exploit — only UrbanSpace offers all four "
-            "services under one roof."
+            "You analyse ONE competitor of UrbanSpace, a Singapore integrated space provider "
+            "(Self Storage, Workspace, Fulfilment, Valet Storage). You are given that "
+            "competitor's public post captions, the engagement those posts attract, and their "
+            "Google reviews (audience comments may also appear). Write a one-line activity "
+            "summary, then a list of concrete, actionable recommendations — each a short title "
+            "and a one-sentence detail — for how UrbanSpace can win against this competitor, "
+            "grounded in what their reviews and audience reveal. Only UrbanSpace offers all "
+            "four services under one roof."
         ),
         "skill_keys": ["brand-identity"],
     },

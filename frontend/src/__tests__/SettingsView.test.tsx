@@ -31,6 +31,9 @@ function stubFetch() {
     if (url.startsWith("/config/skills"))
       return Promise.resolve(ok({ items: [{ id: 1, key: "brand-voice", name: "Brand Voice",
         content: "Warm, direct.", updated_at: "" }], count: 1 }));
+    if (url.startsWith("/ingest/") && init?.method === "POST")
+      return Promise.resolve(ok({ source: url.split("/").pop(), inserted: 3, updated: 1,
+        total: 4, failed: [] }));
     return Promise.reject(new Error(`unexpected ${url}`));
   }));
   return calls;
@@ -72,6 +75,16 @@ test("edits an agent and saves prompt + skills", async () => {
   expect(body.system_prompt).toBe("New prompt.");
   expect(body.skill_keys).toEqual([]);
   await waitFor(() => expect(screen.queryByText(/System prompt — Research Agent/)).toBeNull());
+});
+
+test("triggers ingestion for a source from the Data Sources section", async () => {
+  const calls = stubFetch();
+  render(<ToastProvider><SettingsView /></ToastProvider>);
+  const section = (await screen.findByText("Data Sources")).closest(".card") as HTMLElement;
+  const row = within(section).getByText("zoho").closest(".sdraft-row") as HTMLElement;
+  await userEvent.click(within(row).getByRole("button", { name: /ingest/i }));
+  await waitFor(() => expect(calls.find((c) =>
+    c.url === "/ingest/zoho" && c.init?.method === "POST")).toBeDefined());
 });
 
 test("skill delete surfaces detached agents in one toast", async () => {

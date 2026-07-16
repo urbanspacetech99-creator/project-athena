@@ -50,3 +50,19 @@ def test_ai_research_endpoints_run_in_fake_mode(session):
         assert r.status_code == 200, (path, r.text)
         body = r.json()
         assert "titles" in body and "prefill_prompt" in body
+
+
+def test_competitor_endpoint_shape_and_scoping(session):
+    from athena.db.models import CompetitorPost
+    ref = datetime.now(timezone.utc)
+    session.add(CompetitorPost(source_id="cp1", competitor="StorHub", platform="facebook",
+                               text="promo", window_date=ref - timedelta(days=1)))
+    session.commit()
+    app = create_app()
+    app.dependency_overrides[deps.get_session] = lambda: session
+    client = TestClient(app)
+    body = client.get("/research/competitor").json()
+    assert "activity_summary" in body["insights"]
+    assert isinstance(body["insights"]["recommendations"], list)
+    assert set(body["insights"]["recommendations"][0]) == {"title", "detail"}   # fake LLM yields 2
+    assert client.get("/research/competitor?competitor=StorHub").status_code == 200  # per-competitor form

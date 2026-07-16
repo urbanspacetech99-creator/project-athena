@@ -3,7 +3,7 @@ from typing import Protocol, TypeVar
 from pydantic import BaseModel
 
 from athena.ai.schemas import (AggregatedRecommendations, CommentInsights, CompetitorInsights,
-                                CustomerInsights, ImagePromptSpec, PostCaption,
+                                CustomerInsights, ImagePromptSpec, PostCaption, Recommendation,
                                 SocialReviewInsights, TitleSuggestions)
 from athena.config import Settings
 from athena.logging_setup import get_logger
@@ -72,8 +72,11 @@ def default_fake_llm() -> FakeLLM:
             review_summary="Reviews praise the clean Bukit Merah facility and easy booking."),
         CompetitorInsights: CompetitorInsights(
             activity_summary="Competitors post promo-led storage content with vague pricing.",
-            weaknesses=["no published prices", "single-service offering"],
-            gaps=["four services under one roof", "transparent S$ pricing"]),
+            recommendations=[
+                Recommendation(title="Publish transparent pricing",
+                               detail="Their posts and reviews show customers frustrated by hidden prices."),
+                Recommendation(title="Lead with all-four-services convenience",
+                               detail="No competitor offers storage, workspace, fulfilment and valet under one roof.")]),
         PostCaption: PostCaption(
             caption=("From S$60/month at Bukit Merah. Month-to-month, 24/7 access. "
                      "Book online in three minutes."),

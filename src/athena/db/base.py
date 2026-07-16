@@ -10,7 +10,9 @@ class Base(DeclarativeBase):
 
 def make_engine(settings: Settings | None = None):
     settings = settings or Settings()
-    return create_engine(settings.database_url, pool_pre_ping=True)
+    # active_database_url() routes to the fixture DB in fixture mode so live and fixture
+    # data never share tables (falls back to database_url when no fixture DB is configured).
+    return create_engine(settings.active_database_url(), pool_pre_ping=True)
 
 
 def make_session_factory(engine=None):

@@ -88,6 +88,7 @@ The backend exposes a documented REST API (full OpenAPI at `/docs` and `/openapi
 | GET | /data/own-posts | Own FB/IG posts with views, likes, interactions |
 | GET | /data/post-comments | Comments on the team's own posts |
 | GET | /data/competitor-posts | Competitor public posts |
+| GET | /data/competitor-reviews | Google reviews for tracked competitors |
 | GET | /data/google-reviews | Google Business reviews |
 | GET | /data/keyword-volumes | Weekly keyword search volumes |
 | GET | /data/zoho-chats | Ingested customer chat transcripts |
@@ -97,7 +98,7 @@ All read endpoints accept `?limit=` and `?offset=` and return `{ "items": [...],
 ### Ingestion trigger (tag: ingestion)
 | Method | Path | Description |
 |---|---|---|
-| POST | /ingest/{source} | Run a source's ingestion in its configured mode. `source` ∈ {meta, competitor, google_reviews, google_ads, zoho}. Returns `{source, inserted, updated, total}` (total == inserted + updated). |
+| POST | /ingest/{source} | Run a source's ingestion in its configured mode. `source` ∈ {meta, competitor, google_reviews, google_ads, zoho, competitor_reviews}. Returns `{source, inserted, updated, total}` (total == inserted + updated). |
 
 ### Data sources & modes
 Each source has a `live | fixture` adapter selected by env. Default is `fixture` (SOURCE_MODE=fixture); override per source:
@@ -106,11 +107,12 @@ Each source has a `live | fixture` adapter selected by env. Default is `fixture`
 | Meta (own + competitor) | META_SOURCE_MODE | Meta Graph v25.0 |
 | Google reviews | GOOGLE_REVIEWS_SOURCE_MODE | Google Business Profile v4 |
 | Google Ads keywords | GOOGLE_ADS_SOURCE_MODE | Google Ads v24 (Keyword Planner) |
+| Competitor Google reviews | GOOGLE_PLACES_SOURCE_MODE | Google Places API (New) |
 | Zoho chats | ZOHO_SOURCE_MODE | Zoho CRM v6 |
 
 Fixtures are shaped to match the documented live API responses (parity-tested), so switching a source to `live` requires only credentials. Competitor data via Meta is gated off by default (`competitor_live_access_enabled=false`) — see design risk R1.
 
-Scheduled ingestion runs in the worker (APScheduler): daily for meta/competitor/reviews/zoho, weekly for keywords.
+Scheduled ingestion runs in the worker (APScheduler): daily for meta/competitor/reviews/competitor-reviews/zoho, weekly for keywords.
 
 ## Home API (tag: home)
 | Method | Path | Description |
@@ -131,7 +133,7 @@ Scheduled ingestion runs in the worker (APScheduler): daily for meta/competitor/
 | GET | /research/customer-questions | Raw customer questions extracted from Zoho chat transcripts (regex-based, no AI) |
 | GET | /research/customer-insights | AI summary of the past month's customer chats — top requested services, features, and promotions — plus 5 AI-suggested post titles |
 | GET | /research/social-reviews | Past week's own-post views, AI-extracted comment topics, and a Google reviews summary, plus 5 AI-suggested post titles |
-| GET | /research/competitor | AI summary of competitor activity, audience-revealed weaknesses, and gaps to exploit, plus 5 AI-suggested post titles |
+| GET | /research/competitor | AI activity summary plus titled recommendations for a selected competitor (optional `?competitor=` to scope to one tracked competitor; omit for a cross-competitor sample), plus 5 AI-suggested post titles |
 
 Every endpoint above except `/research/customer-questions` returns the shared Generate handoff — `titles` (5 suggested post titles) and `prefill_prompt` (a ready-made prompt for the post generator) — alongside its own research findings. Like `/home/weekly-engagement`, these endpoints depend on the configured LLM (`LLM_MODE=fake` by default, `live` for Claude Sonnet via Anthropic).
 
@@ -191,7 +193,7 @@ defaults on first boot (`athena.db.seed`) and editable from then on.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | /config/competitors | List tracked competitors (optional `?platform=facebook\|instagram` filter) |
+| GET | /config/competitors | List tracked competitors (optional `?platform=facebook\|instagram\|google` filter) |
 | POST | /config/competitors | Add a tracked competitor |
 | PATCH | /config/competitors/{id} | Update a competitor's name, external_id, and/or enabled flag |
 | DELETE | /config/competitors/{id} | Remove a tracked competitor |

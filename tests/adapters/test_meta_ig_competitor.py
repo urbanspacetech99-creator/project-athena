@@ -12,7 +12,9 @@ def test_fixture_normalizes_to_competitor_rows():
     row = rows[0]
     assert row["platform"] == "instagram"
     assert row["competitor"] == "extraspaceasia"  # attribution from business_discovery.username
-    assert set(row) == {"source_id", "competitor", "platform", "text", "window_date"}
+    assert set(row) == {"source_id", "competitor", "platform", "text",
+                        "like_count", "comment_count", "window_date"}
+    assert row["like_count"] == 42 and row["comment_count"] == 5   # first fixture media
 
 
 def test_live_requires_username():

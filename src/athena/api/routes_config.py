@@ -38,7 +38,7 @@ def modes(settings: Settings = Depends(get_settings)):
 
 @router.get("/competitors", response_model=schemas.ListResponse[schemas.CompetitorOutRow],
             summary="List tracked competitors, optionally filtered by platform")
-def list_competitors(platform: Literal["facebook", "instagram"] | None = None,
+def list_competitors(platform: Literal["facebook", "instagram", "google"] | None = None,
                      session: Session = Depends(get_session)):
     query = session.query(Competitor)
     if platform is not None:

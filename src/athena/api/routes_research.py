@@ -37,7 +37,9 @@ def social_reviews(session: Session = Depends(get_session), llm=Depends(get_llm)
 
 
 @router.get("/competitor", response_model=schemas.CompetitorResponse,
-            summary="Competitor activity & weaknesses + 5 suggested titles")
-def competitor(session: Session = Depends(get_session), llm=Depends(get_llm)):
-    """What competitors post and how audiences respond, with Generate handoff."""
-    return research.research_competitor(session, llm)
+            summary="Competitor activity & recommendations + 5 suggested titles")
+def competitor(competitor: str | None = None, session: Session = Depends(get_session),
+               llm=Depends(get_llm)):
+    """Per-competitor analysis (posts, comment signal, Google reviews) with Generate
+    handoff. Omit `competitor` for a cross-competitor sample."""
+    return research.research_competitor(session, llm, competitor=competitor)

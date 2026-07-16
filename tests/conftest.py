@@ -34,7 +34,8 @@ def _hermetic_modes(monkeypatch):
     # developer's .env value (e.g. ZOHO_SOURCE_MODE=live) would leak through. Pin each
     # per-source override to a non-empty "fixture" instead.
     for k in ("META_SOURCE_MODE", "GOOGLE_REVIEWS_SOURCE_MODE",
-              "GOOGLE_ADS_SOURCE_MODE", "ZOHO_SOURCE_MODE"):
+              "GOOGLE_ADS_SOURCE_MODE", "ZOHO_SOURCE_MODE",
+              "GOOGLE_PLACES_SOURCE_MODE"):
         monkeypatch.setenv(k, "fixture")
     monkeypatch.setenv("LLM_MODE", "fake")
     monkeypatch.setenv("IMAGE_MODE", "fake")

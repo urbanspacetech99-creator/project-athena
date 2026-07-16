@@ -46,3 +46,11 @@ def test_live_requires_page_id(monkeypatch):
     adapter = MetaCompetitorAdapter(mode="live", competitor="X", page_id="")
     with pytest.raises(RuntimeError, match="page_id"):
         adapter.fetch_live()
+
+
+def test_fixture_captures_engagement_counts():
+    from athena.adapters.meta import MetaCompetitorAdapter
+    rows = MetaCompetitorAdapter(mode="fixture", competitor="Extra Space Asia").fetch_normalized()
+    first = rows[0]
+    assert first["like_count"] == 110 and first["comment_count"] == 13   # meta_competitor_posts.json[0]
+    assert "like_count" in first and "comment_count" in first

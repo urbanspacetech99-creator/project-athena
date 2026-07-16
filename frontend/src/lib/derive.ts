@@ -69,34 +69,22 @@ export function keywordChanges(rows: KeywordVolumeRow[]): Map<string, KeywordCha
   return out;
 }
 
-export interface CompetitorActivity {
-  name: string; total: number; facebook: number; instagram: number;
-  last30: number; lastActive: string | null; sharePct: number;
+export interface CompetitorPlatformStat {
+  postsTracked: number;
+  lastActive: string | null;
+  commentCount: number;
+  recent: CompetitorPostRow[];
 }
 
-/** Real per-competitor activity stats derived from competitor posts. */
-export function competitorActivity(
-  rows: CompetitorPostRow[], names: string[], now: Date = new Date(),
-): CompetitorActivity[] {
-  const cutoffMs = now.getTime() - 30 * 24 * 3600 * 1000;
-  const tracked = new Set(names);
-  const grandTotal = rows.filter((r) => tracked.has(r.competitor)).length;
-  return names.map((name) => {
-    const mine = rows.filter((r) => r.competitor === name);
-    const lastActive = mine.length
-      ? mine.reduce(
-          (mx, r) => (Date.parse(r.window_date) > Date.parse(mx) ? r.window_date : mx),
-          mine[0].window_date,
-        )
-      : null;
-    return {
-      name,
-      total: mine.length,
-      facebook: mine.filter((r) => r.platform === "facebook").length,
-      instagram: mine.filter((r) => r.platform === "instagram").length,
-      last30: mine.filter((r) => Date.parse(r.window_date) >= cutoffMs).length,
-      lastActive,
-      sharePct: grandTotal === 0 ? 0 : Math.round((100 * mine.length) / grandTotal),
-    };
-  });
+/** Per-platform stats for a single competitor's already-filtered posts. */
+export function competitorPlatformStats(
+  posts: CompetitorPostRow[], platform: string,
+): CompetitorPlatformStat {
+  const mine = newestFirst(posts.filter((p) => p.platform === platform));
+  return {
+    postsTracked: mine.length,
+    lastActive: mine.length ? mine[0].window_date : null,
+    commentCount: mine.reduce((a, p) => a + (p.comment_count ?? 0), 0),
+    recent: mine.slice(0, 5),
+  };
 }

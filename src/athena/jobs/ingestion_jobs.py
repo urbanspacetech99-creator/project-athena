@@ -143,11 +143,48 @@ def ingest_competitor_posts(session_factory, settings: Settings) -> dict:
         session.close()
 
 
+def ingest_competitor_reviews(session_factory, settings: Settings) -> dict:
+    """Google competitor reviews via the Places API. One adapter per enabled
+    platform="google" competitor (place_id in external_id). Live skips rows with an
+    empty place_id; a failing competitor is logged and skipped, never aborting the run."""
+    from athena.adapters.google_places import GooglePlacesReviewsAdapter
+    from athena.db.models import Competitor, CompetitorReview
+
+    mode = settings.source_mode_for("google_places")
+    session = session_factory()
+    r_ins = r_upd = 0
+    failed: list[str] = []
+    try:
+        rows = (session.query(Competitor)
+                .filter(Competitor.enabled.is_(True), Competitor.platform == "google")
+                .order_by(Competitor.id).all())
+        for comp in rows:
+            if mode == "live" and not comp.external_id:
+                log.warning("skipping competitor without place_id",
+                            extra={"competitor": comp.name, "platform": "google"})
+                continue
+            try:
+                adapter = GooglePlacesReviewsAdapter(mode=mode, competitor=comp.name,
+                                                     place_id=comp.external_id, settings=settings)
+                res = run_ingestion(adapter, session, CompetitorReview, conflict=("source_id",))
+                r_ins += res.inserted
+                r_upd += res.updated
+            except Exception:
+                session.rollback()
+                failed.append(comp.name)
+                log.exception("competitor reviews ingestion failed",
+                              extra={"competitor": comp.name, "platform": "google"})
+        return {"reviews": IngestResult("google_places", r_ins, r_upd), "failed": failed}
+    finally:
+        session.close()
+
+
 def register_all(registry, session_factory, settings) -> None:
     jobs = {
         "ingest_meta_posts": (ingest_meta_posts, "0 3 * * *"),
         "ingest_competitor_posts": (ingest_competitor_posts, "0 3 * * *"),
         "ingest_google_reviews": (ingest_google_reviews, "0 3 * * *"),
+        "ingest_competitor_reviews": (ingest_competitor_reviews, "0 3 * * *"),
         "ingest_keyword_volumes": (ingest_keyword_volumes, "0 4 * * 1"),
         "ingest_zoho_chats": (ingest_zoho_chats, "0 3 * * *"),
     }

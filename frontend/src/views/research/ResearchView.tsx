@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ASSET } from "../../assets";
 import { Ico } from "../../icons";
-import { cacheDelete } from "../../lib/cache";
+import { cacheDeletePrefix } from "../../lib/cache";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { TagPill } from "../../components/TagPill";
 import { CompetitorTab } from "./CompetitorTab";
@@ -97,7 +97,7 @@ export function ResearchView({ onGenerate }: { onGenerate: (title: string, conte
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-white" onClick={() => setMode("selector")}><Ico k="hand" /> Change Sources</button>
           <button className="btn btn-white"
-            onClick={() => { cacheDelete(TAB_CACHE_KEY[active]); setRefreshKey((k) => k + 1); }}>
+            onClick={() => { cacheDeletePrefix(TAB_CACHE_KEY[active]); setRefreshKey((k) => k + 1); }}>
             <Ico k="refresh" /> Refresh
           </button>
         </div>

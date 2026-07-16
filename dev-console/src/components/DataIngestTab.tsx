@@ -4,8 +4,9 @@ import type { DataResource, IngestSource } from "../types";
 import { ResultPanel } from "./ResultPanel";
 
 const RESOURCES: DataResource[] = ["own-posts", "post-comments", "competitor-posts",
-  "google-reviews", "keyword-volumes", "zoho-chats"];
-const SOURCES: IngestSource[] = ["meta", "competitor", "google_reviews", "google_ads", "zoho"];
+  "competitor-reviews", "google-reviews", "keyword-volumes", "zoho-chats"];
+const SOURCES: IngestSource[] = ["meta", "competitor", "google_reviews", "google_ads",
+  "zoho", "competitor_reviews"];
 
 export function DataIngestTab() {
   const [resource, setResource] = useState<DataResource>("own-posts");

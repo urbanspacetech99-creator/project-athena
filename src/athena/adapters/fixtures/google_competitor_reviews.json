@@ -1,0 +1,46 @@
+{
+  "Extra Space Asia": {
+    "id": "places/ChIJextraspace0001",
+    "rating": 4.6,
+    "userRatingCount": 88,
+    "reviews": [
+      {"name": "places/ChIJextraspace0001/reviews/r1", "rating": 5,
+       "text": {"text": "Very convenient and clean.", "languageCode": "en"},
+       "originalText": {"text": "Very convenient and clean.", "languageCode": "en"},
+       "authorAttribution": {"displayName": "Aiden F.", "uri": "https://maps.google.com/aidenf", "photoUri": "https://lh3.googleusercontent.com/a/aidenf"},
+       "publishTime": "2026-07-10T08:00:00Z", "relativePublishTimeDescription": "5 days ago"},
+      {"name": "places/ChIJextraspace0001/reviews/r2", "rating": 4,
+       "text": {"text": "Occasionally hard to reach support.", "languageCode": "en"},
+       "originalText": {"text": "Occasionally hard to reach support.", "languageCode": "en"},
+       "authorAttribution": {"displayName": "Suria M.", "uri": "https://maps.google.com/suriam", "photoUri": "https://lh3.googleusercontent.com/a/suriam"},
+       "publishTime": "2026-07-06T09:30:00Z", "relativePublishTimeDescription": "a week ago"},
+      {"name": "places/ChIJextraspace0001/reviews/r3", "rating": 5,
+       "text": {"text": "Great referral deal.", "languageCode": "en"},
+       "originalText": {"text": "Great referral deal.", "languageCode": "en"},
+       "authorAttribution": {"displayName": "Yusof T.", "uri": "https://maps.google.com/yusoft", "photoUri": "https://lh3.googleusercontent.com/a/yusoft"},
+       "publishTime": "2026-07-02T14:00:00Z", "relativePublishTimeDescription": "2 weeks ago"}
+    ]
+  },
+  "StorHub": {
+    "id": "places/ChIJstorhub0002",
+    "rating": 4.4,
+    "userRatingCount": 210,
+    "reviews": [
+      {"name": "places/ChIJstorhub0002/reviews/r1", "rating": 5,
+       "text": {"text": "Best-in-class facilities.", "languageCode": "en"},
+       "originalText": {"text": "Best-in-class facilities.", "languageCode": "en"},
+       "authorAttribution": {"displayName": "Zack T.", "uri": "https://maps.google.com/zackt", "photoUri": "https://lh3.googleusercontent.com/a/zackt"},
+       "publishTime": "2026-07-11T10:00:00Z", "relativePublishTimeDescription": "4 days ago"},
+      {"name": "places/ChIJstorhub0002/reviews/r2", "rating": 4,
+       "text": {"text": "Pricing not always clear online.", "languageCode": "en"},
+       "originalText": {"text": "Pricing not always clear online.", "languageCode": "en"},
+       "authorAttribution": {"displayName": "Nur A.", "uri": "https://maps.google.com/nura", "photoUri": "https://lh3.googleusercontent.com/a/nura"},
+       "publishTime": "2026-07-05T11:15:00Z", "relativePublishTimeDescription": "a week ago"},
+      {"name": "places/ChIJstorhub0002/reviews/r3", "rating": 3,
+       "text": {"text": "Long queue during peak hours.", "languageCode": "en"},
+       "originalText": {"text": "Long queue during peak hours.", "languageCode": "en"},
+       "authorAttribution": {"displayName": "Ong K.", "uri": "https://maps.google.com/ongk", "photoUri": "https://lh3.googleusercontent.com/a/ongk"},
+       "publishTime": "2026-07-01T16:45:00Z", "relativePublishTimeDescription": "2 weeks ago"}
+    ]
+  }
+}

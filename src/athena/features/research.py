@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from athena.ai.agents import resolve_agent_prompt
 from athena.ai.llm import LLMClient
 from athena.ai.schemas import CompetitorInsights, CustomerInsights, SocialReviewInsights, TitleSuggestions
-from athena.db.models import (CompetitorComment, CompetitorPost, GoogleReview, KeywordVolume,
-                               OwnPost, PostComment, ZohoChat)
+from athena.db.models import (Competitor, CompetitorComment, CompetitorPost, CompetitorReview,
+                              GoogleReview, KeywordVolume, OwnPost, PostComment, ZohoChat)
 
 
 def suggest_titles(session: Session, llm: LLMClient, source: str, context: str) -> TitleSuggestions:
@@ -39,24 +39,42 @@ def research_internet_trends(session: Session, llm: LLMClient) -> dict:
 
 
 def extract_customer_questions(session: Session) -> dict:
-    """Feature 4: raw customer questions from chat transcripts (regex, no AI)."""
+    """Feature 4: customer questions from chat transcripts (regex, no AI).
+
+    Label-agnostic. When a transcript carries ``Customer:`` speaker prefixes (the
+    fixture / idealized shape) keep only the customer's questions — this preserves
+    speaker attribution and excludes staff turns. When it has no such labels (live
+    Zoho Call_Logs are one unlabeled paragraph interleaving both speakers) fall back
+    to every question sentence in the transcript, since the source gives us no way to
+    tell customer from staff.
+    """
     out: list[str] = []
     seen: set[str] = set()
+
+    def add(sentence: str) -> None:
+        s = sentence.strip()
+        if s and s not in seen:
+            seen.add(s)
+            out.append(s)
+
     for (transcript,) in session.query(ZohoChat.transcript).all():
-        for line in (transcript or "").splitlines():
-            if ":" not in line:
-                continue
-            speaker, _, text = line.partition(":")
-            if speaker.strip().lower() != "customer":
-                continue
-            text = text.strip()
-            if "?" not in text:
-                continue
-            for sentence in re.findall(r"[^?]*\?", text):
-                s = sentence.strip()
-                if s and s not in seen:
-                    seen.add(s)
-                    out.append(s)
+        text = transcript or ""
+        lines = text.splitlines()
+        has_customer_label = any(
+            ":" in ln and ln.partition(":")[0].strip().lower() == "customer" for ln in lines)
+        if has_customer_label:
+            for line in lines:
+                if ":" not in line:
+                    continue
+                speaker, _, body = line.partition(":")
+                if speaker.strip().lower() != "customer" or "?" not in body:
+                    continue
+                for sentence in re.findall(r"[^?]*\?", body):
+                    add(sentence)
+        else:
+            # Unlabeled prose: split on sentence terminators, keep the '?'-ending runs.
+            for sentence in re.findall(r"[^.?!]*\?", text):
+                add(sentence)
     return {"questions": out}
 
 
@@ -102,26 +120,46 @@ def research_social_reviews(session: Session, llm: LLMClient,
             "titles": titles.titles, "prefill_prompt": titles.prefill_prompt}
 
 
-def research_competitor(session: Session, llm: LLMClient) -> dict:
-    """Feature 7: competitor activity & weaknesses + titles."""
-    # Bounded to the 50 most recent posts — unbounded accumulation would blow the
-    # prompt budget in live mode as the competitor tables grow. Comments are scoped
-    # to those sampled posts (same cap as a belt-and-braces bound) so the LLM
-    # context stays temporally coherent.
-    recent_posts = (session.query(CompetitorPost)
-                    .order_by(CompetitorPost.window_date.desc()).limit(50).all())
-    posts = [(p.competitor, p.text) for p in recent_posts]
+def research_competitor(session: Session, llm: LLMClient,
+                        competitor: str | None = None) -> dict:
+    """Feature 7: competitor activity & recommendations + titles. When `competitor` is
+    given, scopes to that competitor (folding platform aliases — IG posts are attributed
+    by username) and uses its posts, comment signal, and Google reviews."""
+    aliases: set[str] | None = None
+    if competitor:
+        aliases = {competitor}
+        for c in session.query(Competitor).filter(Competitor.name == competitor).all():
+            if c.external_id:
+                aliases.add(c.external_id)
+
+    post_q = session.query(CompetitorPost)
+    if aliases is not None:
+        post_q = post_q.filter(CompetitorPost.competitor.in_(aliases))
+    # Bounded to the 50 most recent posts so the prompt budget stays fixed as tables grow.
+    recent_posts = post_q.order_by(CompetitorPost.window_date.desc()).limit(50).all()
+    posts = [(p.competitor, p.text, p.like_count, p.comment_count) for p in recent_posts]
     post_ids = [p.source_id for p in recent_posts]
     comments = ([c[0] for c in
                  session.query(CompetitorComment.text)
                  .filter(CompetitorComment.post_source_id.in_(post_ids))
                  .order_by(CompetitorComment.window_date.desc()).limit(50).all()]
                 if post_ids else [])
-    context = ("Competitor posts:\n" + "\n".join(f"- [{c}] {t}" for c, t in posts) +
-               "\n\nAudience comments:\n" + "\n".join(f"- {c}" for c in comments))
+
+    review_q = session.query(CompetitorReview)
+    if competitor:
+        review_q = review_q.filter(CompetitorReview.competitor == competitor)
+    reviews = review_q.order_by(CompetitorReview.window_date.desc()).limit(20).all()
+
+    context = ("Competitor posts:\n" +
+               "\n".join(f"- [{c}] {t} ({likes} likes, {comments} comments)"
+                         for c, t, likes, comments in posts) +
+               "\n\nAudience comments:\n" + "\n".join(f"- {c}" for c in comments) +
+               "\n\nGoogle reviews:\n" +
+               "\n".join(f"- [{r.competitor}] {r.reviewer} ({r.star_rating}★): {r.comment}" for r in reviews))
     insights = llm.structured(
         system=resolve_agent_prompt(session, "competitor_analyst"),
         user=context, schema=CompetitorInsights)
+    recos = "; ".join(f"{r.title}: {r.detail}" for r in insights.recommendations)
     titles = suggest_titles(session, llm, "competitor",
-                            f"{insights.activity_summary} Weaknesses: {insights.weaknesses}. Gaps: {insights.gaps}")
+                            f"{insights.activity_summary} Recommendations: {recos}")
     return {"insights": insights, "titles": titles.titles, "prefill_prompt": titles.prefill_prompt}

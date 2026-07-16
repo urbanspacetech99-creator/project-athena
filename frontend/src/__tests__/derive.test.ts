@@ -1,5 +1,7 @@
 import { expect, test } from "vitest";
-import { competitorActivity, keywordChanges, kpiDeltas, newestFirst } from "../lib/derive";
+import {
+  competitorPlatformStats, keywordChanges, kpiDeltas, newestFirst,
+} from "../lib/derive";
 import { fmt } from "../lib/fmt";
 import type { CompetitorPostRow, KeywordVolumeRow, OwnPostRow } from "../types";
 
@@ -9,10 +11,6 @@ const own = (o: Partial<OwnPostRow>): OwnPostRow => ({
 });
 const kw = (o: Partial<KeywordVolumeRow>): KeywordVolumeRow => ({
   id: 1, source_id: "s", keyword: "k", weekly_search_volume: 0,
-  window_date: "2026-07-01T00:00:00Z", ...o,
-});
-const cp = (o: Partial<CompetitorPostRow>): CompetitorPostRow => ({
-  id: 1, source_id: "s", competitor: "A", platform: "facebook", text: "",
   window_date: "2026-07-01T00:00:00Z", ...o,
 });
 
@@ -104,32 +102,19 @@ test("keywordChanges: dead 0-to-0 keyword is omitted, not NEW", () => {
   expect(ch.get("dead")).toBeUndefined();
 });
 
-test("competitorActivity aggregates per competitor with share of total", () => {
-  const now = new Date("2026-07-13T00:00:00Z");
-  const rows = [
-    cp({ competitor: "A", platform: "facebook", window_date: "2026-07-10T00:00:00Z" }),
-    cp({ competitor: "A", platform: "instagram", window_date: "2026-05-01T00:00:00Z" }),
-    cp({ competitor: "B", platform: "facebook", window_date: "2026-07-12T00:00:00Z" }),
+test("competitorPlatformStats aggregates one competitor's posts for a platform", () => {
+  const posts: CompetitorPostRow[] = [
+    { id: 1, source_id: "a", competitor: "X", platform: "facebook", text: "newest",
+      comment_count: 3, like_count: 10, window_date: "2026-07-10T00:00:00Z" },
+    { id: 2, source_id: "b", competitor: "X", platform: "facebook", text: "older",
+      comment_count: 2, like_count: 5, window_date: "2026-07-01T00:00:00Z" },
+    { id: 3, source_id: "c", competitor: "X", platform: "instagram", text: "ig",
+      comment_count: 9, like_count: 1, window_date: "2026-07-05T00:00:00Z" },
   ];
-  const acts = competitorActivity(rows, ["A", "B"], now);
-  const a = acts.find((x) => x.name === "A")!;
-  expect(a.total).toBe(2);
-  expect(a.facebook).toBe(1);
-  expect(a.instagram).toBe(1);
-  expect(a.last30).toBe(1);                       // only the 2026-07-10 post
-  expect(a.lastActive).toBe("2026-07-10T00:00:00Z");
-  expect(a.sharePct).toBe(67);                    // 2 of 3 posts
-  expect(acts.find((x) => x.name === "B")!.sharePct).toBe(33);
-});
-
-test("competitorActivity: posts from untracked competitors don't dilute shares", () => {
-  const rows = [
-    cp({ competitor: "A", window_date: "2026-07-10T00:00:00Z" }),
-    cp({ competitor: "B", window_date: "2026-07-10T00:00:00Z" }),
-    cp({ competitor: "Ghost", window_date: "2026-07-10T00:00:00Z" }),
-    cp({ competitor: "Ghost", window_date: "2026-07-11T00:00:00Z" }),
-  ];
-  const acts = competitorActivity(rows, ["A", "B"]);
-  expect(acts.find((x) => x.name === "A")!.sharePct).toBe(50);
-  expect(acts.find((x) => x.name === "B")!.sharePct).toBe(50);
+  const fb = competitorPlatformStats(posts, "facebook");
+  expect(fb.postsTracked).toBe(2);
+  expect(fb.commentCount).toBe(5);                 // 3 + 2
+  expect(fb.lastActive).toBe("2026-07-10T00:00:00Z");
+  expect(fb.recent[0].text).toBe("newest");        // newest first
+  expect(competitorPlatformStats(posts, "instagram").postsTracked).toBe(1);
 });

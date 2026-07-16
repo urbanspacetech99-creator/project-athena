@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import (JSON, Boolean, DateTime, Float, Index, Integer, String, Text,
+                        UniqueConstraint, text)
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,6 +42,8 @@ class CompetitorPost(Base, _SourceRow):
     competitor: Mapped[str] = mapped_column(String(128), index=True)
     text: Mapped[str] = mapped_column(Text, default="")
     platform: Mapped[str] = mapped_column(String(32), default="facebook")
+    like_count: Mapped[int] = mapped_column(Integer, default=0)
+    comment_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class CompetitorComment(Base, _SourceRow):
@@ -56,6 +59,20 @@ class GoogleReview(Base, _SourceRow):
     star_rating: Mapped[int] = mapped_column(Integer, default=0)
     comment: Mapped[str] = mapped_column(Text, default="")
     reviewer: Mapped[str] = mapped_column(String(256), default="")
+
+
+class CompetitorReview(Base, _SourceRow):
+    __tablename__ = "competitor_reviews"
+    __table_args__ = (UniqueConstraint("source_id", name="uq_competitor_reviews_source_id"),)
+    competitor: Mapped[str] = mapped_column(String(128), index=True)
+    star_rating: Mapped[int] = mapped_column(Integer, default=0)
+    comment: Mapped[str] = mapped_column(Text, default="")
+    reviewer: Mapped[str] = mapped_column(String(256), default="")
+    # Place-level aggregate from the Places API, denormalised onto each review row
+    # (identical across a competitor's rows for one fetch) so the card header can show
+    # Google's official rating/total rather than an average of the <=5 fetched reviews.
+    place_rating: Mapped[float] = mapped_column(Float, default=0.0)
+    place_review_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class KeywordVolume(Base, _SourceRow):
@@ -106,9 +123,9 @@ class Competitor(Base):
               postgresql_where=text("external_id <> ''")),
     )
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    platform: Mapped[str] = mapped_column(String(32))            # facebook | instagram
+    platform: Mapped[str] = mapped_column(String(32))            # facebook | instagram | google
     name: Mapped[str] = mapped_column(String(128))
-    external_id: Mapped[str] = mapped_column(String(256), default="")  # FB page ID | IG username
+    external_id: Mapped[str] = mapped_column(String(256), default="")  # FB page ID | IG username | Google place_id
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow,

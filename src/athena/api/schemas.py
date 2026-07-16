@@ -35,7 +35,21 @@ class CompetitorPostOut(_ORM):
     source_id: str
     competitor: str
     platform: str
+    like_count: int
+    comment_count: int
     text: str
+    window_date: datetime
+
+
+class CompetitorReviewOut(_ORM):
+    id: int
+    source_id: str
+    competitor: str
+    star_rating: int
+    comment: str
+    reviewer: str
+    place_rating: float
+    place_review_count: int
     window_date: datetime
 
 
@@ -144,10 +158,14 @@ class SocialResponse(BaseModel):
     prefill_prompt: str
 
 
+class CompetitorRecommendationOut(BaseModel):
+    title: str
+    detail: str
+
+
 class CompetitorOut(BaseModel):
     activity_summary: str
-    weaknesses: list[str]
-    gaps: list[str]
+    recommendations: list[CompetitorRecommendationOut]
 
 
 class CompetitorResponse(BaseModel):
@@ -210,7 +228,7 @@ class RecommendationsOut(BaseModel):
 
 
 class CompetitorIn(BaseModel):
-    platform: Literal["facebook", "instagram"]
+    platform: Literal["facebook", "instagram", "google"]
     name: str = Field(min_length=1)
     external_id: str = ""
 
@@ -295,6 +313,7 @@ class SourceModesOut(BaseModel):
     google_reviews: str
     google_ads: str
     zoho: str
+    google_places: str
 
 
 class AiModesOut(BaseModel):

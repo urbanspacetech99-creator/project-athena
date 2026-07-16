@@ -104,3 +104,16 @@ def test_competitor_post_has_platform(session):
     session.commit()
     assert (session.query(CompetitorPost).filter_by(source_id="x1").one()
             .platform == "facebook")
+
+
+def test_competitor_review_row_roundtrips(session):
+    from athena.db.models import CompetitorReview
+    session.add(CompetitorReview(source_id="pr1", competitor="StorHub", star_rating=5,
+                                 comment="Great facility", reviewer="Zack T.",
+                                 place_rating=4.4, place_review_count=210,
+                                 window_date=datetime(2026, 7, 8, tzinfo=timezone.utc)))
+    session.commit()
+    row = session.query(CompetitorReview).filter_by(source_id="pr1").one()
+    assert row.competitor == "StorHub"
+    assert row.place_rating == 4.4 and row.place_review_count == 210
+    assert row.star_rating == 5 and row.reviewer == "Zack T."

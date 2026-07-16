@@ -20,10 +20,14 @@ class CustomerInsights(BaseModel):
     summary: str = ""
 
 
+class Recommendation(BaseModel):
+    title: str = Field(description="Short, specific recommendation headline")
+    detail: str = Field(description="One-sentence explanation grounded in the competitor's data")
+
+
 class CompetitorInsights(BaseModel):
     activity_summary: str = ""
-    weaknesses: list[str] = Field(default_factory=list)
-    gaps: list[str] = Field(default_factory=list)
+    recommendations: list[Recommendation] = Field(default_factory=list)
 
 
 class SocialReviewInsights(BaseModel):

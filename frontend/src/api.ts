@@ -1,8 +1,9 @@
 import type {
-  AgentDef, CompetitorPostRow, CompetitorResponse, CompetitorRow, CustomerInsightsResponse,
-  Draft, EffectivePrompt, EngagementSummary, GeneratePostIn, GeneratePostOut, GoogleReviewRow,
-  KpiSnapshot, KeywordVolumeRow, ListResponse, Modes, OwnPostRow, PostCommentRow, Questions,
-  Recommendations, SkillDef, SocialResponse, StreamProgress, TrackedKeyword, Trends, ZohoChatRow,
+  AgentDef, CompetitorPostRow, CompetitorResponse, CompetitorReviewRow, CompetitorRow,
+  CustomerInsightsResponse, Draft, EffectivePrompt, EngagementSummary, GeneratePostIn,
+  GeneratePostOut, GoogleReviewRow, IngestResponse, IngestSource, KpiSnapshot, KeywordVolumeRow,
+  ListResponse, Modes, OwnPostRow, PostCommentRow, Questions, Recommendations, SkillDef,
+  SocialResponse, StreamProgress, TrackedKeyword, Trends, ZohoChatRow,
 } from "./types";
 import { streamNdjson } from "./lib/stream";
 
@@ -48,11 +49,15 @@ export const api = {
   customerQuestions: () => request<Questions>("/research/customer-questions"),
   customerInsights: () => request<CustomerInsightsResponse>("/research/customer-insights"),
   socialReviews: () => request<SocialResponse>("/research/social-reviews"),
-  competitor: () => request<CompetitorResponse>("/research/competitor"),
+  competitor: (name?: string) =>
+    request<CompetitorResponse>(name
+      ? `/research/competitor?competitor=${encodeURIComponent(name)}`
+      : "/research/competitor"),
 
   ownPosts: () => listTail<OwnPostRow>("own-posts"),
   postComments: () => listTail<PostCommentRow>("post-comments"),
   competitorPosts: () => listTail<CompetitorPostRow>("competitor-posts"),
+  competitorReviews: () => listTail<CompetitorReviewRow>("competitor-reviews"),
   googleReviews: () => listTail<GoogleReviewRow>("google-reviews"),
   keywordVolumes: () => listTail<KeywordVolumeRow>("keyword-volumes"),
   zohoChats: () => request<ListResponse<ZohoChatRow>>(`/data/zoho-chats?limit=1&offset=0`),
@@ -73,6 +78,8 @@ export const api = {
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
       onProgress),
   modes: () => request<Modes>("/config/modes"),
+  ingest: (source: IngestSource) =>
+    request<IngestResponse>(`/ingest/${source}`, { method: "POST" }),
 
   listCompetitors: () => request<ListResponse<CompetitorRow>>("/config/competitors"),
   createCompetitor: (body: { platform: string; name: string; external_id: string }) =>

@@ -35,3 +35,14 @@ test("storage failures degrade to a no-op", () => {
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
   expect(() => cacheSet("k", "v")).not.toThrow();
 });
+
+test("cacheDeletePrefix removes all keys under a prefix", async () => {
+  const { cacheSet, cacheGet, cacheDeletePrefix } = await import("../lib/cache");
+  cacheSet("competitor:A", { x: 1 });
+  cacheSet("competitor:B", { x: 2 });
+  cacheSet("social-reviews", { x: 3 });
+  cacheDeletePrefix("competitor");
+  expect(cacheGet("competitor:A")).toBeUndefined();
+  expect(cacheGet("competitor:B")).toBeUndefined();
+  expect(cacheGet("social-reviews")).toEqual({ x: 3 });   // sibling key untouched
+});

@@ -57,3 +57,19 @@ test("ApiError message prefers FastAPI's detail", async () => {
   }));
   await expect(api.createKeyword("massage")).rejects.toThrow("keyword already tracked");
 });
+
+test("competitor(name) passes the competitor query param", async () => {
+  const spy = vi.fn((_url: string) => Promise.resolve({ ok: true, status: 200, json: async () => ({}) }));
+  vi.stubGlobal("fetch", spy);
+  const { api } = await import("../api");
+  await api.competitor("Extra Space Asia");
+  expect(String(spy.mock.calls[0][0])).toContain("/research/competitor?competitor=Extra%20Space%20Asia");
+});
+
+test("competitorReviews reads the competitor-reviews list", async () => {
+  const spy = vi.fn((_url: string) => Promise.resolve({ ok: true, status: 200, json: async () => ({ items: [], count: 0 }) }));
+  vi.stubGlobal("fetch", spy);
+  const { api } = await import("../api");
+  await api.competitorReviews();
+  expect(spy.mock.calls.some((c) => String(c[0]).includes("/data/competitor-reviews"))).toBe(true);
+});

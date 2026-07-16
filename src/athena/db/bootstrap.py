@@ -96,12 +96,11 @@ def ensure_schema(settings: Settings) -> None:
     log.info("schema migrated to head")
 
 
-def bootstrap_database(settings: Settings | None = None) -> bool:
-    """Ensure the database exists and its schema is at head. Safe to call repeatedly.
+def _bootstrap_one(settings: Settings) -> bool:
+    """Ensure settings.database_url exists, is migrated to head, and is seeded.
 
-    Returns whether the database itself was created on this call.
+    Returns whether that database was created on this call.
     """
-    settings = settings or Settings()
     created = ensure_database(settings)
     ensure_schema(settings)
 
@@ -120,6 +119,22 @@ def bootstrap_database(settings: Settings | None = None) -> bool:
         "database bootstrap complete",
         extra={"database": make_url(settings.database_url).database, "db_created": created},
     )
+    return created
+
+
+def bootstrap_database(settings: Settings | None = None) -> bool:
+    """Provision the live DB and, when a distinct fixture DB is configured, that one too,
+    so whichever the active mode selects is ready. Safe to call repeatedly.
+
+    Returns whether the primary (live) database was created on this call.
+    """
+    settings = settings or Settings()
+    created = _bootstrap_one(settings)
+    if settings.fixture_database_url and settings.fixture_database_url != settings.database_url:
+        # Bootstrap the fixture DB by pointing a copied settings at it (keeps ensure_*/seed
+        # untouched — they read settings.database_url).
+        fx = settings.model_copy(update={"database_url": settings.fixture_database_url})
+        _bootstrap_one(fx)
     return created
 
 

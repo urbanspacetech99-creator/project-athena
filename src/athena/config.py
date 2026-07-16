@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-KNOWN_SOURCES = ("meta", "google_reviews", "google_ads", "zoho")
+KNOWN_SOURCES = ("meta", "google_reviews", "google_ads", "zoho", "google_places")
 _KNOWN_SOURCES = set(KNOWN_SOURCES)
 
 
@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
 
     database_url: str = "postgresql+psycopg://athena:athena@localhost:5432/athena"
+    # Fixture-mode data lives in its own database so live and fixture rows never share
+    # tables. Empty -> single-DB behavior (fixture rows fall back into database_url).
+    fixture_database_url: str = ""
     source_mode: str = "fixture"          # global default
     log_level: str = "INFO"
     # On startup, auto-create the target database (if missing) and migrate the
@@ -32,6 +35,7 @@ class Settings(BaseSettings):
     google_reviews_source_mode: str = ""
     google_ads_source_mode: str = ""
     zoho_source_mode: str = ""
+    google_places_source_mode: str = ""
 
     # feature flags
     competitor_live_access_enabled: bool = False
@@ -60,6 +64,9 @@ class Settings(BaseSettings):
     zoho_module: str = "Call_Logs"                 # confirmed live 2026-07-10 (custom module)
     zoho_transcript_field: str = "Transcript_Text"  # confirmed live; `Transcript` field is empty
 
+    # Google Places API (New) — competitor reviews; API-key auth (not OAuth)
+    google_places_api_key: str = ""
+
     # AI: text (Anthropic Claude)
     claude_api_key: str = ""
     claude_model: str = "claude-sonnet-5"          # latest Sonnet
@@ -80,5 +87,21 @@ class Settings(BaseSettings):
     def source_mode_for(self, source: str) -> str:
         if source not in _KNOWN_SOURCES:
             raise ValueError(f"unknown source: {source!r}")
+        # Fixture mode serves the fixture database (see active_database_url), which must
+        # contain ONLY fixture data — so every source ingests fixtures regardless of its
+        # per-source override. Per-source overrides therefore take effect only in live
+        # mode, where they let a source fall back to fixtures (e.g. no live creds yet).
+        # This is what makes "switch to fixture" actually yield fixture data rather than
+        # leaking a live-pinned source (e.g. ZOHO_SOURCE_MODE=live) into the fixture DB.
+        if self.source_mode == "fixture":
+            return "fixture"
         override = getattr(self, f"{source}_source_mode", "")
         return override or self.source_mode
+
+    def active_database_url(self) -> str:
+        """The DB the app reads/writes now. Fixture mode uses fixture_database_url when
+        set; otherwise (and always in live mode) database_url. This keeps live and
+        fixture rows in physically separate databases so they never mix."""
+        if self.source_mode == "fixture" and self.fixture_database_url:
+            return self.fixture_database_url
+        return self.database_url

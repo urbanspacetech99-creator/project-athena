@@ -131,8 +131,12 @@ class MetaCompetitorAdapter(SourceAdapter):
         rows = []
         for p in raw.get("data", []):
             name = (p.get("from") or {}).get("name") or self.competitor
+            likes = p.get("reactions", {}).get("summary", {}).get("total_count", 0)
+            comments = p.get("comments", {}).get("summary", {}).get("total_count", 0)
             rows.append({"source_id": p["id"], "competitor": name, "platform": "facebook",
-                         "text": p.get("message", ""), "window_date": _parse_ts(p["created_time"])})
+                         "text": p.get("message", ""), "like_count": likes,
+                         "comment_count": comments,
+                         "window_date": _parse_ts(p["created_time"])})
         return rows
 
     def fetch_comments_fixture(self):
@@ -188,5 +192,7 @@ class MetaIGCompetitorAdapter(SourceAdapter):
         for m in (bd.get("media") or {}).get("data", []):
             rows.append({"source_id": m["id"], "competitor": name, "platform": "instagram",
                          "text": m.get("caption", ""),
+                         "like_count": m.get("like_count", 0),
+                         "comment_count": m.get("comments_count", 0),
                          "window_date": _parse_ts(m["timestamp"])})
         return rows

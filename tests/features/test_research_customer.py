@@ -38,6 +38,20 @@ def test_extract_customer_questions_excludes_agent(session):
     assert not any("book a viewing" in q for q in qs)  # agent question excluded
 
 
+def test_extract_customer_questions_unlabeled_live_transcript(session):
+    """Live Zoho Call_Logs are one unlabeled paragraph with no speaker prefixes; the
+    extractor must still surface the question sentences (label-agnostic fallback)."""
+    ref = datetime(2026, 7, 8, tzinfo=timezone.utc)
+    session.add(ZohoChat(source_id="live1", window_date=ref - timedelta(days=1),
+        transcript=("Hi, thanks for calling. This is Staff, how can I help you today? "
+                    "Do you have 24/7 access? Yes we do. And is there climate control?")))
+    session.commit()
+    qs = extract_customer_questions(session)["questions"]
+    assert any("24/7 access" in q for q in qs)
+    assert any("climate control" in q for q in qs)
+    assert all(q.endswith("?") for q in qs)
+
+
 def test_customer_insights_summary_ai(session):
     ref = datetime(2026, 7, 8, tzinfo=timezone.utc)
     _seed(session, ref)

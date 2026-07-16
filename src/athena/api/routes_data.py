@@ -31,8 +31,16 @@ def post_comments(limit: int = 50, offset: int = 0, session: Session = Depends(g
 @router.get("/competitor-posts", response_model=schemas.ListResponse[schemas.CompetitorPostOut],
             summary="List competitor public posts")
 def competitor_posts(limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
-    """Public posts published by tracked competitor pages."""
+    """Public posts published by tracked competitor pages, including like and comment counts."""
     return _list(session, models.CompetitorPost, schemas.CompetitorPostOut, limit, offset)
+
+
+@router.get("/competitor-reviews", response_model=schemas.ListResponse[schemas.CompetitorReviewOut],
+            summary="List competitor Google reviews")
+def competitor_reviews(limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
+    """Google reviews for tracked competitors (Google Places API), with the place-level
+    rating and total review count denormalised onto each row."""
+    return _list(session, models.CompetitorReview, schemas.CompetitorReviewOut, limit, offset)
 
 
 @router.get("/google-reviews", response_model=schemas.ListResponse[schemas.GoogleReviewOut],

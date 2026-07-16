@@ -9,7 +9,7 @@ from sqlalchemy.engine import make_url
 from athena.config import Settings
 from athena.db.bootstrap import bootstrap_database, ensure_database, ensure_schema
 
-HEAD = "0004_config_tables"
+HEAD = "0006_competitor_reviews"
 
 
 def _settings_for(pg_url: str, dbname: str) -> Settings:
@@ -56,6 +56,31 @@ def test_ensure_schema_brings_new_db_to_head(pg_url):
             engine.dispose()
     finally:
         _drop(pg_url, dbname)
+
+
+def test_bootstrap_provisions_fixture_db_too(pg_url):
+    live_db, fix_db = "athena_bootstrap_live", "athena_bootstrap_fix"
+    _drop(pg_url, live_db)
+    _drop(pg_url, fix_db)
+    live_url = make_url(pg_url).set(database=live_db).render_as_string(hide_password=False)
+    fix_url = make_url(pg_url).set(database=fix_db).render_as_string(hide_password=False)
+    settings = Settings(database_url=live_url, fixture_database_url=fix_url,
+                        source_mode="live", db_auto_create=True)
+    try:
+        bootstrap_database(settings)
+        for url in (live_url, fix_url):
+            engine = create_engine(url)
+            try:
+                tables = set(inspect(engine).get_table_names())
+                assert {"own_posts", "zoho_chats", "competitors"} <= tables
+                # seed ran on both -> config tables populated
+                with engine.connect() as conn:
+                    assert conn.execute(text("SELECT count(*) FROM competitors")).scalar() > 0
+            finally:
+                engine.dispose()
+    finally:
+        _drop(pg_url, live_db)
+        _drop(pg_url, fix_db)
 
 
 def test_bootstrap_database_end_to_end_and_idempotent(pg_url):

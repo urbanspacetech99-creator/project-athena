@@ -34,6 +34,13 @@ def test_competitor_platform_validated(session):
         "platform": "tiktok", "name": "X", "external_id": "x"}).status_code == 422
 
 
+def test_google_competitor_accepted(session):
+    created = _client(session).post("/config/competitors", json={
+        "platform": "google", "name": "StorHub", "external_id": "places/ChIJstorhub0002"})
+    assert created.status_code == 201
+    assert created.json()["platform"] == "google"
+
+
 def test_keywords_crud(session):
     client = _client(session)
     assert client.get("/config/keywords").json()["count"] >= 5
@@ -107,15 +114,36 @@ def test_config_endpoints_documented():
 
 def test_modes_endpoint_reflects_settings():
     app = create_app()
+    # Live global: per-source overrides are reflected (meta downgraded to a fixture
+    # fallback). _env_file=None so the developer's .env can't leak into the assertion.
+    # All per-source overrides passed explicitly (init wins over the hermetic-fixture env
+    # vars): meta stays a fixture fallback, the rest inherit the live global.
     app.dependency_overrides[deps.get_settings] = lambda: Settings(
-        db_auto_create=False, source_mode="fixture", zoho_source_mode="live",
-        llm_mode="live", image_mode="fake", canva_mode="live")
+        _env_file=None, db_auto_create=False, source_mode="live", meta_source_mode="fixture",
+        google_reviews_source_mode="", google_ads_source_mode="", zoho_source_mode="",
+        google_places_source_mode="", llm_mode="live", image_mode="fake", canva_mode="live")
     body = TestClient(app).get("/config/modes").json()
     # Exact equality also proves no extra (secret-bearing) fields leak into the payload.
     assert body == {
-        "sources": {"meta": "fixture", "google_reviews": "fixture",
-                    "google_ads": "fixture", "zoho": "live"},
+        "sources": {"meta": "fixture", "google_reviews": "live",
+                    "google_ads": "live", "zoho": "live", "google_places": "live"},
         "ai": {"llm": "live", "image": "fake", "canva": "live"},
+    }
+
+
+def test_modes_endpoint_fixture_mode_reports_all_fixture():
+    app = create_app()
+    # Fixture global serves the fixture DB, which holds only fixture data — so every source
+    # reports fixture even when an override is pinned live (the override applies only in
+    # live mode). This keeps the StatusBadge honest about what is actually being served.
+    app.dependency_overrides[deps.get_settings] = lambda: Settings(
+        _env_file=None, db_auto_create=False, source_mode="fixture", zoho_source_mode="live",
+        llm_mode="fake", image_mode="fake", canva_mode="fake")
+    body = TestClient(app).get("/config/modes").json()
+    assert body == {
+        "sources": {"meta": "fixture", "google_reviews": "fixture",
+                    "google_ads": "fixture", "zoho": "fixture", "google_places": "fixture"},
+        "ai": {"llm": "fake", "image": "fake", "canva": "fake"},
     }
 
 

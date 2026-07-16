@@ -4,12 +4,12 @@ from athena.db.base import make_session_factory
 from athena.config import Settings
 
 
-def test_register_all_registers_five_jobs():
+def test_register_all_registers_six_jobs():
     reg = JobRegistry()
     register_all(reg, make_session_factory(), Settings())
     assert set(reg.names()) == {
         "ingest_meta_posts", "ingest_competitor_posts", "ingest_google_reviews",
-        "ingest_keyword_volumes", "ingest_zoho_chats",
+        "ingest_competitor_reviews", "ingest_keyword_volumes", "ingest_zoho_chats",
     }
 
 

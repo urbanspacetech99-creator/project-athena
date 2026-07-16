@@ -44,11 +44,45 @@ def test_empty_env_values_keep_defaults(monkeypatch):
     assert s.zoho_dc == "com"
 
 
-def test_source_mode_for_uses_override(env):
-    env(META_SOURCE_MODE="live")
-    s = Settings()
-    assert s.source_mode_for("meta") == "live"
+def test_source_mode_for_override_applies_in_live_mode():
+    # In live mode a per-source override can downgrade one source to fixtures (fallback
+    # for a source without live credentials) while the rest stay live. Built with
+    # _env_file=None so the developer's .env / hermetic fixture can't leak in.
+    s = Settings(_env_file=None, source_mode="live",
+                 meta_source_mode="fixture", zoho_source_mode="")
+    assert s.source_mode_for("meta") == "fixture"
+    assert s.source_mode_for("zoho") == "live"
+
+
+def test_source_mode_for_fixture_global_forces_fixture():
+    # Fixture mode serves the fixture DB, which must stay pure: a live-pinned source must
+    # NOT leak live data into it, so the override is ignored under a fixture global mode.
+    s = Settings(_env_file=None, source_mode="fixture", zoho_source_mode="live")
     assert s.source_mode_for("zoho") == "fixture"
+    assert s.source_mode_for("meta") == "fixture"
+
+
+def test_active_database_url_fixture_mode(monkeypatch):
+    monkeypatch.setenv("SOURCE_MODE", "fixture")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@h:5432/live")
+    monkeypatch.setenv("FIXTURE_DATABASE_URL", "postgresql+psycopg://u:p@h:5432/fix")
+    assert Settings().active_database_url() == "postgresql+psycopg://u:p@h:5432/fix"
+
+
+def test_active_database_url_live_mode(monkeypatch):
+    monkeypatch.setenv("SOURCE_MODE", "live")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@h:5432/live")
+    monkeypatch.setenv("FIXTURE_DATABASE_URL", "postgresql+psycopg://u:p@h:5432/fix")
+    assert Settings().active_database_url() == "postgresql+psycopg://u:p@h:5432/live"
+
+
+def test_active_database_url_falls_back_when_no_fixture_url():
+    # env_ignore_empty=True means an empty FIXTURE_DATABASE_URL env var is ignored and the
+    # field default ("") applies -> fall back to database_url. Build Settings directly with
+    # _env_file=None so the developer's real .env (which sets a fixture URL) can't leak in.
+    s = Settings(_env_file=None, source_mode="fixture", fixture_database_url="",
+                 database_url="postgresql+psycopg://u:p@h:5432/live")
+    assert s.active_database_url() == "postgresql+psycopg://u:p@h:5432/live"
 
 
 def test_source_mode_for_rejects_unknown_source(env):

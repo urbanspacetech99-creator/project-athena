@@ -17,7 +17,8 @@ export interface CustomerInsightsResponse { insights: CustomerInsights; titles: 
 export interface SocialReview { comment_topics: string[]; review_summary: string; }
 export interface SocialResponse { views: number; insights: SocialReview; titles: string[];
   prefill_prompt: string; }
-export interface Competitor { activity_summary: string; weaknesses: string[]; gaps: string[]; }
+export interface Recommendation { title: string; detail: string; }
+export interface Competitor { activity_summary: string; recommendations: Recommendation[]; }
 export interface CompetitorResponse { insights: Competitor; titles: string[]; prefill_prompt: string; }
 
 export interface PostOption { caption: string; hashtags: string[]; image_b64: string;
@@ -32,7 +33,7 @@ export interface Draft { id: number; platform: string; caption: string; image_b6
   canva_edit_url: string; created_at: string; }
 export interface Recommendations { titles: string[]; prefill_prompt: string; rationale: string; }
 
-export interface CompetitorRow { id: number; platform: "facebook" | "instagram"; name: string;
+export interface CompetitorRow { id: number; platform: "facebook" | "instagram" | "google"; name: string;
   external_id: string; enabled: boolean; created_at: string; updated_at: string; }
 export interface TrackedKeyword { id: number; keyword: string; enabled: boolean; created_at: string; }
 export interface AgentDef { id: number; key: string; name: string; system_prompt: string;
@@ -45,18 +46,27 @@ export interface OwnPostRow { id: number; source_id: string; platform: string; t
 export interface PostCommentRow { id: number; source_id: string; post_source_id: string;
   text: string; window_date: string; }
 export interface CompetitorPostRow { id: number; source_id: string; competitor: string;
-  platform: string; text: string; window_date: string; }
+  platform: string; text: string; like_count: number; comment_count: number; window_date: string; }
+export interface CompetitorReviewRow { id: number; source_id: string; competitor: string;
+  star_rating: number; comment: string; reviewer: string;
+  place_rating: number; place_review_count: number; window_date: string; }
 export interface GoogleReviewRow { id: number; source_id: string; star_rating: number;
   comment: string; reviewer: string; window_date: string; }
 export interface KeywordVolumeRow { id: number; source_id: string; keyword: string;
   weekly_search_volume: number; window_date: string; }
 export interface ZohoChatRow { id: number; source_id: string; transcript: string; window_date: string; }
 
+export type IngestSource =
+  "meta" | "competitor" | "google_reviews" | "google_ads" | "zoho" | "competitor_reviews";
+export interface IngestResponse {
+  source: string; inserted: number; updated: number; total: number; failed: string[];
+}
+
 /** Research → Generate handoff payload. */
 export interface GenRequest { title: string; context: string; }
 
 export interface Modes {
-  sources: { meta: string; google_reviews: string; google_ads: string; zoho: string };
+  sources: { meta: string; google_reviews: string; google_ads: string; zoho: string; google_places: string };
   ai: { llm: string; image: string; canva: string };
 }
 export interface StreamProgress { step: number; total: number; label: string }

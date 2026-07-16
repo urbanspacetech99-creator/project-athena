@@ -19,7 +19,8 @@ export interface CustomerInsightsResponse { insights: CustomerInsights; titles: 
 export interface SocialReview { comment_topics: string[]; review_summary: string; }
 export interface SocialResponse { views: number; insights: SocialReview; titles: string[];
   prefill_prompt: string; }
-export interface Competitor { activity_summary: string; weaknesses: string[]; gaps: string[]; }
+export interface Recommendation { title: string; detail: string; }
+export interface Competitor { activity_summary: string; recommendations: Recommendation[]; }
 export interface CompetitorResponse { insights: Competitor; titles: string[]; prefill_prompt: string; }
 
 export interface PostOption { caption: string; hashtags: string[]; image_b64: string;
@@ -35,9 +36,10 @@ export interface Draft { id: number; platform: string; caption: string; image_b6
 export interface Recommendations { titles: string[]; prefill_prompt: string; rationale: string; }
 
 export type DataResource =
-  | "own-posts" | "post-comments" | "competitor-posts"
+  | "own-posts" | "post-comments" | "competitor-posts" | "competitor-reviews"
   | "google-reviews" | "keyword-volumes" | "zoho-chats";
-export type IngestSource = "meta" | "competitor" | "google_reviews" | "google_ads" | "zoho";
+export type IngestSource =
+  "meta" | "competitor" | "google_reviews" | "google_ads" | "zoho" | "competitor_reviews";
 
 export interface CompetitorRow { id: number; platform: "facebook" | "instagram"; name: string;
   external_id: string; enabled: boolean; created_at: string; updated_at: string; }

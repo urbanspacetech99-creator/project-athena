@@ -36,3 +36,13 @@ export function cacheSet<T>(key: string, data: T, ttlMs: number = DAY_MS): void 
 export function cacheDelete(key: string): void {
   try { localStorage.removeItem(PREFIX + key); } catch { /* best-effort */ }
 }
+
+export function cacheDeletePrefix(prefix: string): void {
+  try {
+    const full = PREFIX + prefix;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k !== null && k.startsWith(full)) localStorage.removeItem(k);
+    }
+  } catch { /* best-effort */ }
+}
