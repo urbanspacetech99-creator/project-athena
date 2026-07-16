@@ -18,6 +18,8 @@ version: "3"
 x-app-env: &app_env
   # Core
   - DATABASE_URL=            # postgresql+psycopg://<POSTGRES_USER>:<POSTGRES_PASSWORD>@postgres:5432/<POSTGRES_DB>
+  - TEST_DATABASE_URL=
+  - FIXTURE_DATABASE_URL=
   - SOURCE_MODE=             # fixture | live   (global data-source mode)
   - LOG_LEVEL=               # (optional) default INFO
   - DB_AUTO_CREATE=          # (optional) true|false, default true — auto-create DB + migrate to head on api startup
@@ -27,6 +29,7 @@ x-app-env: &app_env
   - META_SOURCE_MODE=
   - GOOGLE_REVIEWS_SOURCE_MODE=
   - GOOGLE_ADS_SOURCE_MODE=
+  - GOOGLE_PLACES_SOURCE_MODE=
   - ZOHO_SOURCE_MODE=
   # Feature flags
   - COMPETITOR_LIVE_ACCESS_ENABLED=   # (optional) true|false, default false
@@ -57,6 +60,7 @@ x-app-env: &app_env
   - GADS_DEVELOPER_TOKEN=
   - GADS_LOGIN_CUSTOMER_ID=
   - GADS_CUSTOMER_ID=
+  - GOOGLE_PLACES_API_KEY=
   # Zoho CRM
   - ZOHO_CLIENT_ID=
   - ZOHO_CLIENT_SECRET=
