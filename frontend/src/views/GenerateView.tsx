@@ -26,20 +26,21 @@ const STYLES: Array<{ label: string; value: string }> = [
 const PLATFORM_COLOR: Record<string, string> = { instagram: "#E8651A", facebook: "#4A87BE" };
 const platformColor = (p: string) => PLATFORM_COLOR[p.toLowerCase()] ?? "#E8651A";
 
-function ChipRow<T extends string>({ options, value, onPick }: {
-  options: readonly T[]; value: T; onPick: (v: T) => void;
+function ChipRow<T extends string>({ options, value, onPick, disabled }: {
+  options: readonly T[]; value: T; onPick: (v: T) => void; disabled?: boolean;
 }) {
   return (
     <div className="gchip-row">
       {options.map((o) => (
-        <button key={o} className={`gchip ${value === o ? "on" : ""}`} onClick={() => onPick(o)}>{o}</button>
+        <button key={o} className={`gchip ${value === o ? "on" : ""}`}
+          onClick={() => onPick(o)} disabled={disabled}>{o}</button>
       ))}
     </div>
   );
 }
 
-function ToggleChip({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
-  return <button className={`gchip ${on ? "on" : ""}`} onClick={onToggle}>{label}</button>;
+function ToggleChip({ label, on, onToggle, disabled }: { label: string; on: boolean; onToggle: () => void; disabled: boolean }) {
+  return <button className={`gchip ${on ? "on" : ""}`} disabled={disabled} onClick={onToggle}>{label}</button>;
 }
 
 export function GenerateView({ request }: { request: GenRequest | null }) {
@@ -144,11 +145,11 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
         </div>
         <div className="gfield-block">
           <div className="gform-lbl">Platform</div>
-          <ChipRow options={PLATFORMS} value={platform} onPick={setPlatform} />
+          <ChipRow options={PLATFORMS} value={platform} onPick={setPlatform} disabled={busy}/>
         </div>
         <div className="gfield-block">
           <div className="gform-lbl">Topic / Prompt</div>
-          <textarea className="gprompt" aria-label="Topic or prompt" value={prompt}
+          <textarea className="gprompt" aria-label="Topic or prompt" value={prompt} disabled={busy}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="e.g. 3 months free promo — move in before July and lock in our best rate" />
           {context && (
@@ -163,17 +164,17 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
           )}
         </div>
         <div className="g2col gfield-block">
-          <div><div className="gform-lbl">Tone</div><ChipRow options={TONES} value={tone} onPick={setTone} /></div>
-          <div><div className="gform-lbl">Length</div><ChipRow options={LENGTHS} value={length} onPick={setLength} /></div>
+          <div><div className="gform-lbl">Tone</div><ChipRow options={TONES} value={tone} onPick={setTone} disabled={busy}/></div>
+          <div><div className="gform-lbl">Length</div><ChipRow options={LENGTHS} value={length} onPick={setLength} disabled={busy}/></div>
         </div>
         <div className="g2col gfield-block">
-          <div><div className="gform-lbl">Target Audience</div><ChipRow options={AUDIENCES} value={audience} onPick={setAudience} /></div>
+          <div><div className="gform-lbl">Target Audience</div><ChipRow options={AUDIENCES} value={audience} onPick={setAudience} disabled={busy}/></div>
           <div>
             <div className="gform-lbl">Visual Style</div>
             <div className="gchip-row">
               {STYLES.map((s) => (
                 <button key={s.value} className={`gchip ${style === s.value ? "on" : ""}`}
-                  onClick={() => setStyle(s.value)}>{s.label}</button>
+                  onClick={() => setStyle(s.value)}disabled={busy}>{s.label}</button>
               ))}
             </div>
           </div>
@@ -181,10 +182,10 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
         <div className="gfield-block">
           <div className="gform-lbl">Include</div>
           <div className="gchip-row">
-            <ToggleChip label="Hashtags" on={flags.hashtags} onToggle={() => setFlags({ ...flags, hashtags: !flags.hashtags })} />
-            <ToggleChip label="Call to action" on={flags.cta} onToggle={() => setFlags({ ...flags, cta: !flags.cta })} />
-            <ToggleChip label="Emoji" on={flags.emoji} onToggle={() => setFlags({ ...flags, emoji: !flags.emoji })} />
-            <ToggleChip label="Pricing" on={flags.pricing} onToggle={() => setFlags({ ...flags, pricing: !flags.pricing })} />
+            <ToggleChip label="Hashtags" on={flags.hashtags} onToggle={() => setFlags({ ...flags, hashtags: !flags.hashtags })} disabled={busy} />
+            <ToggleChip label="Call to action" on={flags.cta} onToggle={() => setFlags({ ...flags, cta: !flags.cta })} disabled={busy} />
+            <ToggleChip label="Emoji" on={flags.emoji} onToggle={() => setFlags({ ...flags, emoji: !flags.emoji })} disabled={busy} />
+            <ToggleChip label="Pricing" on={flags.pricing} onToggle={() => setFlags({ ...flags, pricing: !flags.pricing })} disabled={busy} />
           </div>
         </div>
         <button className="btn btn-blue" onClick={doGenerate} disabled={busy}>
@@ -251,7 +252,7 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
                   {editingId === draft.id ? (
                     <div style={{ flex: 1 }}>
                       <textarea className="gprompt" aria-label="Edit draft caption" value={editCaption}
-                        onChange={(e) => setEditCaption(e.target.value)} />
+                        onChange={(e) => setEditCaption(e.target.value)} disabled={busy}/>
                       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
                         <button className="btn btn-ora btn-sm" onClick={() => saveCaption(draft.id)}>Save</button>
                         <button className="btn btn-white btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
