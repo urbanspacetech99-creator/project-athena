@@ -186,6 +186,12 @@ Three env vars toggle live vs fake behavior independently (all default to `fake`
 | `IMAGE_MODE` | `fake` | Images via Google Gemini (default model `gemini-2.5-flash-image`) — needs `GEMINI_API_KEY` (+ `GEMINI_IMAGE_MODEL`) |
 | `CANVA_MODE` | `fake` | Real Canva Connect upload + design — needs `CANVA_ACCESS_TOKEN` (+ client credentials) |
 
+Canva refresh tokens rotate and are single-use, so a revoked lineage (e.g. from two
+instances refreshing concurrently) can only be recovered by minting a fresh token pair
+through the OAuth consent flow. [`scripts/canva_oauth.py`](scripts/canva_oauth.py) runs that
+flow (Authorization Code + PKCE) and writes the new pair straight into the app DB — run
+`uv run python scripts/canva_oauth.py` and see the file's docstring for the full checklist.
+
 ## Config API (tag: config)
 CRUD for the Settings views in both the dashboard and the dev console — tracked competitors,
 tracked keywords, agent definitions, and skill fragments. All are seeded with UrbanSpace
