@@ -91,9 +91,10 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
 
   const saveOption = async (o: PostOption, plat: string) => {
     try {
+      const hashtags = o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`));
       await api.createDraft({
         platform: plat.toLowerCase(),
-        caption: [o.caption, ...o.hashtags].join(" "),
+        caption: [o.caption, ...hashtags].join(" "),
         image_b64: o.image_b64, canva_edit_url: o.canva_edit_url,
       });
       drafts.reload();
@@ -224,7 +225,7 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
                 </div>
                 <div className="gdraft-body">
                   <div className="gdraft-txt">{o.caption}</div>
-                  <div className="gdraft-tags">{o.hashtags.join(" ")}</div>
+                  <div className="gdraft-tags">{o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")}</div>
                   <div className="gdraft-actions">
                     <button className="btn btn-blue btn-sm" style={{ flex: 1, justifyContent: "center" }}
                       onClick={() => exportOption(o, genResult.platform)}>Download PNG</button>
@@ -260,9 +261,18 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
                     </div>
                   ) : (
                     <>
-                      <div style={{ flex: 1 }}>
-                        <div className="sdraft-title">{draft.caption}</div>
-                        <div className="sdraft-meta">{draft.platform} · saved {draft.created_at.slice(0, 10)}</div>
+                      <div style={{ flex: 1, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        {draft.image_b64 && (
+                          <img
+                            src={`data:image/png;base64,${draft.image_b64}`}
+                            alt="Draft visual"
+                            style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                          />
+                        )}
+                        <div>
+                          <div className="sdraft-title">{draft.caption}</div>
+                          <div className="sdraft-meta">{draft.platform} · saved {draft.created_at.slice(0, 10)}</div>
+                        </div>
                       </div>
                       <button className="btn btn-blue-outline btn-sm"
                         onClick={() => { setEditingId(draft.id); setEditCaption(draft.caption); }}>
