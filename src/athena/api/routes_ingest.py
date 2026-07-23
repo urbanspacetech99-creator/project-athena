@@ -21,6 +21,11 @@ _JOBS = {
 def _to_response(source: str, res) -> schemas.IngestResponse:
     inserted = updated = total = 0
     failed: list[str] = []
+    if isinstance(res, dict) and res.get("skipped"):
+        # Checked before the generic dict walk: bool is an int subclass, so the
+        # marker's True would otherwise be summed into `total`.
+        return schemas.IngestResponse(source=source, inserted=0, updated=0, total=0,
+                                      skipped=True)
     if isinstance(res, IngestResult):
         inserted, updated, total = res.inserted, res.updated, res.total
     elif isinstance(res, dict):
@@ -42,7 +47,12 @@ def _to_response(source: str, res) -> schemas.IngestResponse:
 def trigger_ingestion(source: str, factory=Depends(get_session_factory),
                       settings: Settings = Depends(get_settings)):
     """Run the ingestion job for `source` on demand. Valid sources:
-    meta, competitor, google_reviews, google_ads, zoho, competitor_reviews."""
+    meta, competitor, google_reviews, google_ads, zoho, competitor_reviews.
+    Rows land in the DB the source's effective mode selects (fixture-pinned sources
+    write the fixture DB even in global live mode). Only the degenerate single-DB
+    config — live mode with no FIXTURE_DATABASE_URL — skips a fixture-pinned source
+    (the live DB must stay free of fixture rows); the response then reports
+    `skipped: true`."""
     if source not in _JOBS:
         raise HTTPException(status_code=400, detail=f"unknown source: {source}")
     res = _JOBS[source](factory, settings)

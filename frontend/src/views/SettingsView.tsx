@@ -33,9 +33,17 @@ function DataSourcesSection() {
     setBusy(source);
     try {
       const r = await api.ingest(source);
-      const failed = r.failed.length ? ` · failed: ${r.failed.join(", ")}` : "";
-      setResults((m) => ({ ...m, [source]: `${r.inserted} new, ${r.updated} updated${failed}` }));
-      toast(`Ingested ${source}`);
+      if (r.skipped) {
+        // Degenerate single-DB live config (no fixture DB): the backend refuses to
+        // write fixture rows into the live DB. With a fixture DB configured, sources
+        // are routed there instead and never skip. Not an error — run-all keeps going.
+        setResults((m) => ({ ...m, [source]: "skipped (no fixture DB configured)" }));
+        toast(`Skipped ${source}`);
+      } else {
+        const failed = r.failed.length ? ` · failed: ${r.failed.join(", ")}` : "";
+        setResults((m) => ({ ...m, [source]: `${r.inserted} new, ${r.updated} updated${failed}` }));
+        toast(`Ingested ${source}`);
+      }
     } catch (e) {
       toast(`Failed: ${e instanceof Error ? e.message : e}`);
     } finally {

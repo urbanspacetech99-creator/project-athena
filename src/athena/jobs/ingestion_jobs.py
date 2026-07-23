@@ -7,7 +7,19 @@ from athena.logging_setup import get_logger
 log = get_logger("athena.jobs.ingestion")
 
 
+def _skipped(source: str) -> dict:
+    """Skip marker for a fixture-pinned source in the degenerate single-DB live config
+    (no FIXTURE_DATABASE_URL): ingesting would write fixture rows into the LIVE
+    database. With a fixture DB configured the source is never skipped — the routed
+    session lands its rows there instead (see Settings.ingestion_skipped_for)."""
+    log.info("ingestion skipped",
+             extra={"source": source, "reason": "fixture-pinned in single-DB live mode"})
+    return {"source": source, "skipped": True}
+
+
 def ingest_meta_posts(session_factory, settings: Settings) -> dict:
+    if settings.ingestion_skipped_for("meta"):
+        return _skipped("meta")
     mode = settings.source_mode_for("meta")
     adapter = MetaOwnPostsAdapter(mode=mode, settings=settings)
     session = session_factory()
@@ -27,6 +39,8 @@ def ingest_google_reviews(session_factory, settings: Settings):
     from athena.adapters.google_reviews import GoogleReviewsAdapter
     from athena.db.models import GoogleReview
 
+    if settings.ingestion_skipped_for("google_reviews"):
+        return _skipped("google_reviews")
     adapter = GoogleReviewsAdapter(mode=settings.source_mode_for("google_reviews"), settings=settings)
     session = session_factory()
     try:
@@ -40,6 +54,8 @@ def ingest_keyword_volumes(session_factory, settings):
     from athena.adapters.google_ads import KeywordPlannerAdapter
     from athena.db.models import KeywordVolume
 
+    if settings.ingestion_skipped_for("google_ads"):
+        return _skipped("google_ads")
     session = session_factory()
     try:
         keywords = [k.keyword for k in session.query(TrackedKeyword)
@@ -56,6 +72,8 @@ def ingest_zoho_chats(session_factory, settings):
     from athena.adapters.zoho import ZohoChatsAdapter
     from athena.db.models import ZohoChat
 
+    if settings.ingestion_skipped_for("zoho"):
+        return _skipped("zoho")
     adapter = ZohoChatsAdapter(mode=settings.source_mode_for("zoho"), settings=settings)
     session = session_factory()
     try:
@@ -72,6 +90,8 @@ def ingest_competitor_posts(session_factory, settings: Settings) -> dict:
     from athena.adapters.meta import MetaCompetitorAdapter, MetaIGCompetitorAdapter
     from athena.db.models import CompetitorComment, CompetitorPost
 
+    if settings.ingestion_skipped_for("meta"):
+        return _skipped("meta")
     mode = settings.source_mode_for("meta")
     session = session_factory()
     p_ins = p_upd = c_ins = c_upd = 0
@@ -150,6 +170,8 @@ def ingest_competitor_reviews(session_factory, settings: Settings) -> dict:
     from athena.adapters.google_places import GooglePlacesReviewsAdapter
     from athena.db.models import Competitor, CompetitorReview
 
+    if settings.ingestion_skipped_for("google_places"):
+        return _skipped("google_places")
     mode = settings.source_mode_for("google_places")
     session = session_factory()
     r_ins = r_upd = 0

@@ -1,5 +1,6 @@
 .venv
 .git
+deploy
 tests
 docs
 __pycache__

@@ -60,6 +60,9 @@ export type IngestSource =
   "meta" | "competitor" | "google_reviews" | "google_ads" | "zoho" | "competitor_reviews";
 export interface IngestResponse {
   source: string; inserted: number; updated: number; total: number; failed: string[];
+  /** True only in the degenerate single-DB live config (fixture-pinned source with no
+   *  fixture DB configured); with one configured, sources route there and never skip. */
+  skipped: boolean;
 }
 
 /** Research → Generate handoff payload. */

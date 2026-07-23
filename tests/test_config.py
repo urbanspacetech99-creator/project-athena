@@ -62,6 +62,58 @@ def test_source_mode_for_fixture_global_forces_fixture():
     assert s.source_mode_for("meta") == "fixture"
 
 
+def test_ingestion_skipped_only_in_single_db_live_config():
+    # With a fixture DB configured, a fixture-pinned source in live mode is ROUTED there
+    # (never skipped). Skipping survives only in the degenerate single-DB config, where
+    # ingesting would write fixture rows into the live database.
+    _fix = "postgresql+psycopg://u:p@h:5432/fix"
+    routed = Settings(_env_file=None, source_mode="live", fixture_database_url=_fix,
+                      meta_source_mode="fixture", zoho_source_mode="live")
+    assert routed.ingestion_skipped_for("meta") is False
+    assert routed.ingestion_skipped_for("zoho") is False
+    single_db = Settings(_env_file=None, source_mode="live", fixture_database_url="",
+                         meta_source_mode="fixture", zoho_source_mode="live",
+                         google_reviews_source_mode="")
+    assert single_db.ingestion_skipped_for("meta") is True
+    assert single_db.ingestion_skipped_for("zoho") is False
+    assert single_db.ingestion_skipped_for("google_reviews") is False  # inherits global live
+    fixture = Settings(_env_file=None, source_mode="fixture", meta_source_mode="fixture")
+    assert fixture.ingestion_skipped_for("meta") is False
+
+
+def test_database_url_for_routes_by_effective_source_mode():
+    _live = "postgresql+psycopg://u:p@h:5432/live"
+    _fix = "postgresql+psycopg://u:p@h:5432/fix"
+    s = Settings(_env_file=None, source_mode="live", database_url=_live,
+                 fixture_database_url=_fix,
+                 meta_source_mode="", google_reviews_source_mode="fixture")
+    assert s.database_url_for("meta") == _live              # inherits global live
+    assert s.database_url_for("google_reviews") == _fix     # pinned fixture -> fixture DB
+
+
+def test_database_url_for_global_fixture_mode_uses_fixture_db_for_all():
+    _live = "postgresql+psycopg://u:p@h:5432/live"
+    _fix = "postgresql+psycopg://u:p@h:5432/fix"
+    s = Settings(_env_file=None, source_mode="fixture", database_url=_live,
+                 fixture_database_url=_fix, zoho_source_mode="live")
+    assert s.database_url_for("zoho") == _fix               # override ignored in fixture mode
+    assert s.database_url_for("meta") == _fix
+
+
+def test_database_url_for_falls_back_without_fixture_url():
+    _live = "postgresql+psycopg://u:p@h:5432/live"
+    s = Settings(_env_file=None, source_mode="fixture", fixture_database_url="",
+                 database_url=_live)
+    assert s.database_url_for("meta") == _live
+
+
+def test_database_url_for_rejects_unknown_source():
+    import pytest
+    s = Settings(_env_file=None)
+    with pytest.raises(ValueError, match="unknown source"):
+        s.database_url_for("gogle_ads")
+
+
 def test_active_database_url_fixture_mode(monkeypatch):
     monkeypatch.setenv("SOURCE_MODE", "fixture")
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@h:5432/live")

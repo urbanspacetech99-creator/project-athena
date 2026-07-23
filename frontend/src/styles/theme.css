@@ -242,7 +242,9 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FCEAD9
 .comp-eng-stat{font-size:11.5px;color:var(--muted)}
 .comp-eng-stat b{color:var(--text);font-size:13px;font-weight:800;display:block}
 .comp-section-lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);padding:10px 16px 4px}
-.comp-post-title{font-size:11.5px;color:var(--text);padding:4px 16px;font-weight:600}
+/* Live captions are long multi-line text — separate rows like .cm-item/.comp-rev and clamp to 3 lines */
+.comp-post-title{font-size:11.5px;color:var(--text);padding:8px 16px;font-weight:600;line-height:1.4;border-top:1px solid #F4EEE6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.comp-sec-title+.comp-post-title{border-top:none}
 .comp-rev{padding:8px 16px;border-top:1px solid #F4EEE6}
 .comp-rev:first-child{border-top:none}
 

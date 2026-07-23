@@ -109,11 +109,24 @@ def research_social_reviews(session: Session, llm: LLMClient,
     comments = ([c[0] for c in session.query(PostComment.text)
                  .filter(PostComment.post_source_id.in_(own_ids)).all()] if own_ids else [])
     reviews = [r[0] for r in session.query(GoogleReview.comment).all() if r[0]]
-    context = ("Comments:\n" + "\n".join(f"- {c}" for c in comments) +
-               "\n\nReviews:\n" + "\n".join(f"- {r}" for r in reviews))
-    insights = llm.structured(
-        system=resolve_agent_prompt(session, "social_review_analyst"),
-        user=context, schema=SocialReviewInsights)
+    # Never ask the model to summarise data that isn't there: with an empty section the
+    # structured-output call has nothing to ground review_summary on and Claude emits a
+    # literal "<UNKNOWN>" placeholder (seen in live mode before per-source routing, when
+    # the fixture-pinned comments/reviews tables were empty). Empty sections get a
+    # deterministic message instead; only non-empty sections reach the prompt.
+    if not comments and not reviews:
+        insights = SocialReviewInsights(review_summary="No comments or reviews ingested yet.")
+    else:
+        sections = []
+        if comments:
+            sections.append("Comments:\n" + "\n".join(f"- {c}" for c in comments))
+        if reviews:
+            sections.append("Reviews:\n" + "\n".join(f"- {r}" for r in reviews))
+        insights = llm.structured(
+            system=resolve_agent_prompt(session, "social_review_analyst"),
+            user="\n\n".join(sections), schema=SocialReviewInsights)
+        if not reviews:
+            insights.review_summary = "No Google reviews ingested yet."
     titles = suggest_titles(session, llm, "social_reviews",
                             f"Views: {views}. Topics: {insights.comment_topics}. {insights.review_summary}")
     return {"views": views, "insights": insights,

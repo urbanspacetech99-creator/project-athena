@@ -65,8 +65,9 @@ Everything is env-driven via `.env` — see `.env.example` (grouped and commente
 
 | Env | Meaning |
 |---|---|
-| `DATABASE_URL` | Postgres URL; `DB_AUTO_CREATE=true` (default) creates the DB if missing and migrates to head on startup |
-| `SOURCE_MODE` + `META_`/`GOOGLE_REVIEWS_`/`GOOGLE_ADS_`/`ZOHO_SOURCE_MODE` | `fixture` \| `live` per data source (per-source overrides win) |
+| `DATABASE_URL` | Postgres URL for LIVE data; `DB_AUTO_CREATE=true` (default) creates the DB if missing and migrates to head on startup |
+| `FIXTURE_DATABASE_URL` | Separate Postgres URL holding all fixture rows. Served for every source in `SOURCE_MODE=fixture`, and for fixture-pinned sources in live mode (per-source routing), so fixture rows never share tables with live data (empty → single-DB fallback into `DATABASE_URL`) |
+| `SOURCE_MODE` + `META_`/`GOOGLE_REVIEWS_`/`GOOGLE_ADS_`/`ZOHO_SOURCE_MODE` | `fixture` \| `live` per data source (per-source overrides win in live mode; fixture mode forces every source to fixture) |
 | `LLM_MODE` + `CLAUDE_API_KEY` | `fake` \| `live` text AI (Claude, default model `claude-sonnet-5`) |
 | `IMAGE_MODE` + `GEMINI_API_KEY` | `fake` \| `live` image AI (Gemini) |
 | `CANVA_MODE` + Canva tokens | `fake` \| `live` Canva Connect handoff |
@@ -98,7 +99,7 @@ All read endpoints accept `?limit=` and `?offset=` and return `{ "items": [...],
 ### Ingestion trigger (tag: ingestion)
 | Method | Path | Description |
 |---|---|---|
-| POST | /ingest/{source} | Run a source's ingestion in its configured mode. `source` ∈ {meta, competitor, google_reviews, google_ads, zoho, competitor_reviews}. Returns `{source, inserted, updated, total}` (total == inserted + updated). |
+| POST | /ingest/{source} | Run a source's ingestion in its configured mode; rows land in the DB that mode selects. `source` ∈ {meta, competitor, google_reviews, google_ads, zoho, competitor_reviews}. Returns `{source, inserted, updated, total, skipped}` (total == inserted + updated; `skipped: true` with zero counts only in the degenerate single-DB live config — fixture-pinned source with no `FIXTURE_DATABASE_URL`). |
 
 ### Data sources & modes
 Each source has a `live | fixture` adapter selected by env. Default is `fixture` (SOURCE_MODE=fixture); override per source:
@@ -112,7 +113,9 @@ Each source has a `live | fixture` adapter selected by env. Default is `fixture`
 
 Fixtures are shaped to match the documented live API responses (parity-tested), so switching a source to `live` requires only credentials. Competitor data via Meta is gated off by default (`competitor_live_access_enabled=false`) — see design risk R1.
 
-Scheduled ingestion runs in the worker (APScheduler): daily for meta/competitor/reviews/competitor-reviews/zoho, weekly for keywords.
+Live and fixture rows live in physically separate databases (`DATABASE_URL` vs `FIXTURE_DATABASE_URL`), and every sourced table is **routed per source**: reads and writes go to the DB the source's *effective mode* selects. In global live mode a fixture-pinned source (e.g. `GOOGLE_REVIEWS_SOURCE_MODE=fixture`) therefore keeps ingesting — into the fixture DB — and the dashboard serves its fixture rows alongside the live sources' live rows in the same view, while each database holds only its own kind of rows. Config tables (competitors, keywords, agents, drafts) stay on the active DB for the global mode. Only the degenerate single-DB config (live mode with no `FIXTURE_DATABASE_URL`) still skips fixture-pinned sources, since routing then has nowhere safe to put their rows. Decision + alternatives: `docs/specs/2026-07-22-source-routing-design.md`.
+
+Scheduled ingestion runs in the worker (APScheduler): daily for meta/competitor/reviews/competitor-reviews/zoho, weekly for keywords. The worker reads its configuration at boot — restart it after changing modes in `.env`.
 
 ## Home API (tag: home)
 | Method | Path | Description |

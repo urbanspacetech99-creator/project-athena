@@ -88,6 +88,10 @@ class IngestResponse(BaseModel):
     updated: int
     total: int
     failed: list[str] = []
+    # True when the job refused to run: fixture-pinned source in the degenerate
+    # single-DB live config (no FIXTURE_DATABASE_URL — ingesting would write fixture
+    # rows into the live database). With a fixture DB configured, nothing skips.
+    skipped: bool = False
 
 
 class KpiSnapshotOut(BaseModel):

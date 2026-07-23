@@ -1,6 +1,6 @@
 export interface ListResponse<T> { items: T[]; count: number; }
 export interface IngestResponse { source: string; inserted: number; updated: number; total: number;
-  failed: string[]; }
+  failed: string[]; skipped: boolean; }
 
 export interface KpiSnapshot { posts: number; views: number; likes: number; interactions: number; }
 export interface TopPost { source_id: string; platform: string; content: string;

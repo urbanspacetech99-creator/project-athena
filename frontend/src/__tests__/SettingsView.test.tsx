@@ -31,9 +31,12 @@ function stubFetch() {
     if (url.startsWith("/config/skills"))
       return Promise.resolve(ok({ items: [{ id: 1, key: "brand-voice", name: "Brand Voice",
         content: "Warm, direct.", updated_at: "" }], count: 1 }));
+    if (url === "/ingest/google_reviews" && init?.method === "POST")
+      return Promise.resolve(ok({ source: "google_reviews", inserted: 0, updated: 0,
+        total: 0, failed: [], skipped: true }));
     if (url.startsWith("/ingest/") && init?.method === "POST")
       return Promise.resolve(ok({ source: url.split("/").pop(), inserted: 3, updated: 1,
-        total: 4, failed: [] }));
+        total: 4, failed: [], skipped: false }));
     return Promise.reject(new Error(`unexpected ${url}`));
   }));
   return calls;
@@ -85,6 +88,29 @@ test("triggers ingestion for a source from the Data Sources section", async () =
   await userEvent.click(within(row).getByRole("button", { name: /ingest/i }));
   await waitFor(() => expect(calls.find((c) =>
     c.url === "/ingest/zoho" && c.init?.method === "POST")).toBeDefined());
+});
+
+test("shows skipped notice for a skip-reported source instead of counts", async () => {
+  // The backend reports skipped only in the degenerate single-DB live config
+  // (no fixture DB); with one configured, fixture-pinned sources route there instead.
+  stubFetch();
+  render(<ToastProvider><SettingsView /></ToastProvider>);
+  const section = (await screen.findByText("Data Sources")).closest(".card") as HTMLElement;
+  const row = within(section).getByText("google_reviews").closest(".sdraft-row") as HTMLElement;
+  await userEvent.click(within(row).getByRole("button", { name: /ingest/i }));
+  expect(await within(row).findByText(/skipped \(no fixture DB configured\)/)).toBeInTheDocument();
+  expect(screen.queryByText(/Failed/)).toBeNull(); // a skip is not an error
+});
+
+test("run-all continues past a skipped source", async () => {
+  const calls = stubFetch();
+  render(<ToastProvider><SettingsView /></ToastProvider>);
+  const section = (await screen.findByText("Data Sources")).closest(".card") as HTMLElement;
+  await userEvent.click(within(section).getByRole("button", { name: /ingest all/i }));
+  // google_reviews (3rd of 6) is skipped; the loop must still reach the last source.
+  await waitFor(() => expect(calls.find((c) =>
+    c.url === "/ingest/competitor_reviews" && c.init?.method === "POST")).toBeDefined());
+  expect(calls.filter((c) => c.url.startsWith("/ingest/")).length).toBe(6);
 });
 
 test("skill delete surfaces detached agents in one toast", async () => {

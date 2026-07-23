@@ -98,10 +98,30 @@ class Settings(BaseSettings):
         override = getattr(self, f"{source}_source_mode", "")
         return override or self.source_mode
 
+    def ingestion_skipped_for(self, source: str) -> bool:
+        """True when ingestion for `source` must be skipped. Only the degenerate
+        single-DB config skips: global live mode with a fixture-pinned source and NO
+        fixture_database_url — ingesting would write fixture rows into the live DB.
+        With a fixture DB configured the source is routed there instead (see
+        database_url_for); fixture global mode never skips."""
+        return (self.source_mode == "live"
+                and self.source_mode_for(source) == "fixture"
+                and not self.fixture_database_url)
+
+    def database_url_for(self, source: str) -> str:
+        """The DB serving `source` right now: effective fixture mode routes to the
+        fixture DB (when configured), live to the live DB. This is what lets a global
+        live mode serve live and fixture sources side by side while each database
+        holds only its own kind of rows."""
+        if self.source_mode_for(source) == "fixture" and self.fixture_database_url:
+            return self.fixture_database_url
+        return self.database_url
+
     def active_database_url(self) -> str:
-        """The DB the app reads/writes now. Fixture mode uses fixture_database_url when
-        set; otherwise (and always in live mode) database_url. This keeps live and
-        fixture rows in physically separate databases so they never mix."""
+        """The DB for config/app tables (competitors, agents, drafts, …) and the
+        default session bind. Fixture mode uses fixture_database_url when set;
+        otherwise (and always in live mode) database_url. Sourced tables are routed
+        per source via database_url_for instead."""
         if self.source_mode == "fixture" and self.fixture_database_url:
             return self.fixture_database_url
         return self.database_url

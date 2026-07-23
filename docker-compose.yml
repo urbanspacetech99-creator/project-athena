@@ -21,6 +21,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena
+      # Override the .env fixture URL too: its host is unreachable on the compose
+      # network, and bootstrap provisions this DB on the db service (mixed-mode routing).
+      FIXTURE_DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena_fixture
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +36,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena
+      FIXTURE_DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena_fixture
     depends_on:
       db:
         condition: service_healthy
