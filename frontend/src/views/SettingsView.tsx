@@ -6,6 +6,7 @@ import { useApi, type Query } from "../hooks/useApi";
 import { Ico } from "../icons";
 import { useToast } from "../toast";
 import type { AgentDef, IngestSource, ListResponse, SkillDef } from "../types";
+import { DEFAULT_AGENTS, DEFAULT_SKILLS } from "../lib/agentDefaults";
 
 
 function SectionCard({ title, sub, children }: {
@@ -210,11 +211,12 @@ function AgentsSection({ agents, skills }: {
         setPrompt(updated.system_prompt); setSkillKeys(updated.skill_keys);
         toast("Agent updated");
       }, (e) => toast(`Failed: ${e instanceof Error ? e.message : e}`));
-  const reset = () => {
-    if (!original) return;
-    setPrompt(original.system_prompt); setSkillKeys(original.skill_keys);
-    toast("Reverted to last saved version");
-  };
+    const reset = () => {
+      const d = editing ? DEFAULT_AGENTS[editing.key] : undefined;
+      if (!d) return;
+      setPrompt(d.system_prompt); setSkillKeys(d.skill_keys);
+      toast("Reset to default");
+    };
 
   return (
     <SectionCard title="Agents" sub="System prompts and attached skills for each AI agent">
@@ -260,7 +262,9 @@ function AgentsSection({ agents, skills }: {
                       </div>
                       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                         <button className="btn btn-ora btn-sm" onClick={save}>Save</button>
-                        <button className="btn btn-white btn-sm" onClick={reset}>Reset</button>
+                        {DEFAULT_AGENTS[editing.key] && (
+                          <button className="btn btn-white btn-sm" onClick={reset}>Reset to default</button>
+                        )}
                       </div>
                       <div className="gform-lbl" style={{ marginTop: 12 }}>Effective prompt (live preview)</div>
                       <pre style={{ marginTop: 6, whiteSpace: "pre-wrap", fontSize: 12,
@@ -299,6 +303,13 @@ function SkillsSection({ skills, agents }: {
   const saveSkill = () =>
     run(api.updateSkill(editingSkill!.key, { name: editName, content: editContent })
       .then(() => { setEditingSkill(null); return "Skill updated"; }));
+  /*this is for if you wanna reset to default for skills
+  const resetSkill = () => {
+  const d = editingSkill ? DEFAULT_SKILLS[editingSkill.key] : undefined;
+  if (!d) return;
+  setEditName(d.name); setEditContent(d.content);
+  toast("Reset to default");
+  };*/
 
   return (
     <SectionCard title="Skills" sub="Reusable prompt fragments attachable to agents">
@@ -337,6 +348,11 @@ function SkillsSection({ skills, agents }: {
                         onChange={(e) => setEditContent(e.target.value)} />
                       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                         <button className="btn btn-ora btn-sm" onClick={saveSkill}>Save</button>
+                        {/*also for if u wanna have a reset to default for skills
+                        {DEFAULT_SKILLS[editingSkill.key] && (
+                          <button className="btn btn-white btn-sm" onClick={resetSkill}>Reset to default</button>
+                        )}
+                        */}
                         <button className="btn btn-white btn-sm" onClick={() => setEditingSkill(null)}>Cancel</button>
                       </div>
                     </div>
