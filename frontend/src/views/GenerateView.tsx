@@ -66,6 +66,7 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
   const [genProgress, setGenProgress] = useState<StreamProgress | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCaption, setEditCaption] = useState("");
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const doGenerate = async () => {
     setBusy(true);
@@ -220,7 +221,8 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
                   style={{ background: platformColor(genResult.platform), padding: 0 }}>
                   {o.image_b64
                     ? <img src={`data:${o.mime_type};base64,${o.image_b64}`} alt={`Draft ${i + 1} visual`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }}
+                        onClick={() => setLightboxSrc(`data:${o.mime_type};base64,${o.image_b64}`)} />
                     : <><Ico k="camera" /><div className="gdraft-hdr-lbl">Draft {i + 1} &middot; {genResult.platform}</div></>}
                 </div>
                 <div className="gdraft-body">
@@ -262,13 +264,14 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
                   ) : (
                     <>
                       <div style={{ flex: 1, display: "flex", gap: 12, alignItems: "flex-start" }}>
-                        {draft.image_b64 && (
-                          <img
-                            src={`data:image/png;base64,${draft.image_b64}`}
-                            alt="Draft visual"
-                            style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
-                          />
-                        )}
+                      {draft.image_b64 && (
+                        <img
+                          src={`data:image/png;base64,${draft.image_b64}`}
+                          alt="Draft visual"
+                          style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, cursor: "zoom-in" }}
+                          onClick={() => setLightboxSrc(`data:image/png;base64,${draft.image_b64}`)}
+                        />
+                      )}
                         <div>
                           <div className="sdraft-title">{draft.caption}</div>
                           <div className="sdraft-meta">{draft.platform} · saved {draft.created_at.slice(0, 10)}</div>
@@ -308,6 +311,12 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
             onRefresh={() => { setRecoProgress(null); recos.reload(); }} />
         )}
       </AsyncSection>
+      {lightboxSrc && (
+      <div className="lightbox-overlay" onClick={() => setLightboxSrc(null)}>
+        <button className="lightbox-close" onClick={() => setLightboxSrc(null)}>&times;</button>
+        <img src={lightboxSrc} alt="Enlarged" className="lightbox-img" onClick={(e) => e.stopPropagation()} />
+      </div>
+    )}
     </div>
   );
 }

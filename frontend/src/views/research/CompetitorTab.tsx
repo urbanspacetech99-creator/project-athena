@@ -9,6 +9,17 @@ import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { competitorPlatformStats, newestFirst } from "../../lib/derive";
 import type { CompetitorPlatformStat } from "../../lib/derive";
 
+function splitHashtags(text: string) {
+  const words = text.split(/(\s+)/);
+  const caption: string[] = [];
+  const tags: string[] = [];
+  for (const w of words) {
+    if (/^#\S+/.test(w.trim())) tags.push(w.trim());
+    else caption.push(w);
+  }
+  return { caption: caption.join("").trim(), tags };
+}
+
 function PlatformCard({ label, color, stat }: { label: string; color: string; stat: CompetitorPlatformStat }) {
   return (
     <div className="soc-card">
@@ -24,7 +35,19 @@ function PlatformCard({ label, color, stat }: { label: string; color: string; st
       <div className="comp-sec-title">Recent Posts</div>
       {stat.recent.length === 0
         ? <div className="empty-note">No posts ingested yet.</div>
-        : stat.recent.map((p) => <div className="comp-post-title" key={p.id}>{p.text}</div>)}
+        : (
+      <div className="comp-recent-list">
+        {stat.recent.map((p) => {
+          const { caption, tags } = splitHashtags(p.text);
+          return (
+            <div className="comp-post-item" key={p.id}>
+              <div className="comp-post-title">{caption}</div>
+              {tags.length > 0 && <div className="comp-post-tags">{tags.join(" ")}</div>}
+            </div>
+          );
+        })}
+      </div>
+        )}
     </div>
   );
 }

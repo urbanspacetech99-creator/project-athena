@@ -1,7 +1,7 @@
 /** 1080x1080 branded post PNG, ported from the prototype's downloadPostPNG
     (docs/draft/urbanspace_dashboard.html lines 1075-1125).
     If imageDataUrl is provided (a generated AI image), it is center cover-cropped
-    to fill the square and darkened with a scrim so the caption stays readable. */
+    to fill the square. */
 export interface ExportOpts {
   text: string;
   color: string;
@@ -21,7 +21,7 @@ export function wrapCanvasText(
   for (let n = 0; n < words.length; n++) {
     const testLine = line + words[n] + " ";
     if (ctx.measureText(testLine).width > maxWidth && n > 0) {
-      if (lineNo >= maxLines) {   // out of room: ellipsize this line and stop
+      if (lineNo >= maxLines) {
         ctx.fillText(line.trimEnd() + "…", x, curY);
         return;
       }
@@ -59,11 +59,13 @@ export async function downloadPostPNG(opts: ExportOpts): Promise<void> {
   if (imageDataUrl) {
     try {
       const img = await loadImage(imageDataUrl);
-      const scale = Math.max(W / img.width, H / img.height); // cover, not stretch
+      const scale = Math.max(W / img.width, H / img.height);
       const sw = W / scale, sh = H / scale;
       ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, W, H);
-      ctx.fillStyle = "rgba(0,0,0,.45)";      // scrim for text legibility
+      /*
+      ctx.fillStyle = "rgba(0,0,0,.45)";
       ctx.fillRect(0, 0, W, H);
+      */
       drewImage = true;
     } catch {
       onError?.("Post image could not be loaded — exporting with brand background");
@@ -74,6 +76,7 @@ export async function downloadPostPNG(opts: ExportOpts): Promise<void> {
     ctx.beginPath(); ctx.arc(W - 80, 90, 220, 0, Math.PI * 2); ctx.fill();
   }
 
+  /*
   try {
     ctx.fillStyle = "#ffffff";
     ctx.textBaseline = "alphabetic";
@@ -84,11 +87,16 @@ export async function downloadPostPNG(opts: ExportOpts): Promise<void> {
     ctx.fillText(platform.toUpperCase(), 64, 132);
     ctx.fillStyle = "#ffffff";
     ctx.font = '700 54px "DM Sans",sans-serif';
-    wrapCanvasText(ctx, text, 64, 340, W - 128, 66, 9); // 9 lines end at y=868, above the footer
+    wrapCanvasText(ctx, text, 64, 340, W - 128, 66, 9);
     ctx.font = '500 24px "DM Sans",sans-serif';
     ctx.fillStyle = "rgba(255,255,255,.75)";
     ctx.fillText("Self-Storage · Work · Fulfilment", 64, H - 64);
+  } catch {
+    onError?.("PNG export failed");
+  }
+  */
 
+  try {
     canvas.toBlob((blob) => {
       if (!blob) { onError?.("PNG export failed"); return; }
       const url = URL.createObjectURL(blob);
