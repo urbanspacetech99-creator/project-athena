@@ -5,13 +5,13 @@ Artifacts in this directory:
 | File | What it is |
 |---|---|
 | `docker-compose.yml` | Prod-style stack: `postgres`, `adminer`, `api`, `worker` (external `urbanspace_intra` network). |
-| `athena-backend-0.2.0.tar` | The built app image (`athena-backend:0.2.0` + `:latest`, ~304 MB). **Git-ignored** — move it manually. |
+| `athena-backend-0.3.0.tar` | The built app image (`athena-backend:0.3.0` + `:latest`, ~304 MB). **Git-ignored** — move it manually. |
 
-The `api` and `worker` services run the **same** image (`athena-backend:0.2.0`), differing only by command (`uvicorn …` vs `python -m athena.worker.main`). `postgres:18.1-alpine3.23` and `adminer:5.4.1-standalone` are public images pulled on the server.
+The `api` and `worker` services run the **same** image (`athena-backend:0.3.0`), differing only by command (`uvicorn …` vs `python -m athena.worker.main`). `postgres:18.1-alpine3.23` and `adminer:5.4.1-standalone` are public images pulled on the server.
 
 ## 1. Move artifacts to the server
 
-Copy `docker-compose.yml` and `athena-backend-0.2.0.tar` to the server (e.g. `scp deploy/docker-compose.yml deploy/athena-backend-0.2.0.tar user@server:/opt/athena/`).
+Copy `docker-compose.yml` and `athena-backend-0.3.0.tar` to the server (e.g. `scp deploy/docker-compose.yml deploy/athena-backend-0.3.0.tar user@server:/opt/athena/`).
 
 ## 2. One-time prerequisites on the server
 
@@ -19,8 +19,8 @@ Copy `docker-compose.yml` and `athena-backend-0.2.0.tar` to the server (e.g. `sc
 # The compose expects this network to already exist (external).
 docker network create urbanspace_intra   # skip if it already exists
 
-# Load the app image (creates athena-backend:0.2.0 and :latest).
-docker load -i athena-backend-0.2.0.tar
+# Load the app image (creates athena-backend:0.3.0 and :latest).
+docker load -i athena-backend-0.3.0.tar
 docker image ls | grep athena-backend
 ```
 

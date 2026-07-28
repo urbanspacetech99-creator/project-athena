@@ -6,7 +6,7 @@ import { useApi, type Query } from "../hooks/useApi";
 import { Ico } from "../icons";
 import { useToast } from "../toast";
 import type { AgentDef, IngestSource, ListResponse, SkillDef } from "../types";
-import { DEFAULT_AGENTS, DEFAULT_SKILLS } from "../lib/agentDefaults";
+import { DEFAULT_AGENTS/*, DEFAULT_SKILLS*/ } from "../lib/agentDefaults";
 
 
 function SectionCard({ title, sub, children }: {
@@ -189,7 +189,7 @@ function AgentsSection({ agents, skills }: {
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState<AgentDef | null>(null);
-  const [original, setOriginal] = useState<AgentDef | null>(null);
+  const [/*original*/, setOriginal] = useState<AgentDef | null>(null);
   const [prompt, setPrompt] = useState("");
   const [skillKeys, setSkillKeys] = useState<string[]>([]);
 

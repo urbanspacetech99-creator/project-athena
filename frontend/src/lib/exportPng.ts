@@ -45,7 +45,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
   });
 
 export async function downloadPostPNG(opts: ExportOpts): Promise<void> {
-  const { text, color, platform, imageDataUrl, onError } = opts;
+  const { /*text, */color, /*platform, */imageDataUrl, onError } = opts;
   if (document.fonts?.ready) { try { await document.fonts.ready; } catch { /* fonts optional */ } }
   const W = 1080, H = 1080;
   const canvas = document.createElement("canvas");
