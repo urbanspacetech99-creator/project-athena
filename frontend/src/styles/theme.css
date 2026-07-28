@@ -316,3 +316,12 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FCEAD9
 .cm-grid{grid-template-columns:1fr 1fr} /* prototype had 3 comment cards; we render 2 (comments lack a platform field) */
 /* normalize mixed prototype icon sizes in rank rows */
 .rank-stat .ico svg{width:12px;height:12px}
+
+.agent-row-open{background:var(--blue-l);border-radius:10px;margin:2px 0}
+.agent-row-open .sdraft-row{border-top:none}
+.agent-edit-panel{padding:0 16px 20px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.skill-pill{display:inline-block;border:1.5px solid var(--ora);color:var(--ora-d);
+  background:var(--ora-l);border-radius:20px;padding:2px 10px;font-size:10.5px;font-weight:700}
+.skill-pill-empty{border-color:var(--border);color:var(--faint);background:transparent}
+.skill-preview{font-size:11px;color:var(--muted)}
+.skill-hint{font-size:11px;color:var(--muted);margin-top:4px}

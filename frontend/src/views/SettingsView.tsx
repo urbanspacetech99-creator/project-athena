@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { api } from "../api";
 import { AsyncSection } from "../components/AsyncSection";
 import { TagPill } from "../components/TagPill";
@@ -6,6 +6,7 @@ import { useApi, type Query } from "../hooks/useApi";
 import { Ico } from "../icons";
 import { useToast } from "../toast";
 import type { AgentDef, IngestSource, ListResponse, SkillDef } from "../types";
+
 
 function SectionCard({ title, sub, children }: {
   title: string; sub: string; children: ReactNode;
@@ -187,62 +188,88 @@ function AgentsSection({ agents, skills }: {
 }) {
   const toast = useToast();
   const [editing, setEditing] = useState<AgentDef | null>(null);
+  const [original, setOriginal] = useState<AgentDef | null>(null);
   const [prompt, setPrompt] = useState("");
   const [skillKeys, setSkillKeys] = useState<string[]>([]);
-  const [effective, setEffective] = useState("");
 
-  const open = (a: AgentDef) => {
-    setEditing(a); setPrompt(a.system_prompt); setSkillKeys(a.skill_keys); setEffective("");
+  const effectivePreview = useMemo(() => {
+    if (!editing) return "";
+    const attached = (skills.data?.items ?? []).filter((s) => skillKeys.includes(s.key));
+    return [prompt, ...attached.map((s) => s.content)].filter(Boolean).join("\n\n");
+  }, [editing, prompt, skillKeys, skills.data]);
+
+  const toggle = (a: AgentDef) => {
+    if (editing?.key === a.key) { setEditing(null); return; }
+    setEditing(a); setOriginal(a); setPrompt(a.system_prompt); setSkillKeys(a.skill_keys);
   };
   const save = () =>
     api.updateAgent(editing!.key, { system_prompt: prompt, skill_keys: skillKeys })
-      .then(() => { agents.reload(); setEditing(null); toast("Agent updated"); },
-            (e) => toast(`Failed: ${e instanceof Error ? e.message : e}`));
-  const preview = () =>
-    api.effectivePrompt(editing!.key)
-      .then((r) => setEffective(r.effective_prompt),
-            (e) => toast(`Failed: ${e instanceof Error ? e.message : e}`));
+      .then((updated) => {
+        agents.reload();
+        setEditing(updated); setOriginal(updated);
+        setPrompt(updated.system_prompt); setSkillKeys(updated.skill_keys);
+        toast("Agent updated");
+      }, (e) => toast(`Failed: ${e instanceof Error ? e.message : e}`));
+  const reset = () => {
+    if (!original) return;
+    setPrompt(original.system_prompt); setSkillKeys(original.skill_keys);
+    toast("Reverted to last saved version");
+  };
 
   return (
     <SectionCard title="Agents" sub="System prompts and attached skills for each AI agent">
       <AsyncSection q={agents}>
         {(d) => (
           <>
-            {d.items.map((a) => (
-              <div className="sdraft-row" key={a.key}>
-                <div style={{ flex: 1 }}>
-                  <div className="sdraft-title">{a.name}</div>
-                  <div className="sdraft-meta">{a.key} · skills: {a.skill_keys.join(", ") || "none"}</div>
-                </div>
-                <button className="btn btn-blue-outline btn-sm" onClick={() => open(a)}>Edit</button>
-              </div>
-            ))}
-            {editing && (
-              <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-                <div className="gform-lbl">System prompt — {editing.name}</div>
-                <textarea className="gprompt" style={{ minHeight: 120 }} value={prompt}
-                  aria-label="Agent system prompt" onChange={(e) => setPrompt(e.target.value)} />
-                <div className="gform-lbl" style={{ marginTop: 10 }}>Attached skills</div>
-                <div className="gchip-row">
-                  {(skills.data?.items ?? []).map((s) => (
-                    <button key={s.key} className={`gchip ${skillKeys.includes(s.key) ? "on" : ""}`}
-                      onClick={() => setSkillKeys(skillKeys.includes(s.key)
-                        ? skillKeys.filter((k) => k !== s.key) : [...skillKeys, s.key])}>
-                      {s.name}
+            {d.items.map((a) => {
+              const isOpen = editing?.key === a.key;
+              return (
+                <div key={a.key} className={isOpen ? "agent-row-open" : ""}>
+                  <div className="sdraft-row">
+                    <div style={{ flex: 1 }}>
+                      <div className="sdraft-title">{a.name}</div>
+                      <div className="sdraft-meta" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                        <span>{a.key}</span>
+                        {a.skill_keys.length > 0
+                          ? a.skill_keys.map((k) => <span key={k} className="skill-pill">{k}</span>)
+                          : <span className="skill-pill skill-pill-empty">none</span>}
+                      </div>
+                    </div>
+                    <button className="btn btn-blue-outline btn-sm" onClick={() => toggle(a)}>
+                      {isOpen ? "Close" : "Edit"}
                     </button>
-                  ))}
+                  </div>
+                  {isOpen && (
+                    <div className="agent-edit-panel">
+                      <div className="gform-lbl">System prompt</div>
+                      <textarea className="gprompt" style={{ minHeight: 120 }} value={prompt}
+                        aria-label="Agent system prompt" onChange={(e) => setPrompt(e.target.value)} />
+                      <div className="gform-lbl" style={{ marginTop: 10 }}>Attached skills</div>
+                      <div className="skill-hint">
+                        Skills are appended to the system prompt above at generation time — they don't change the text in
+                        this box. See the live combined result below.
+                      </div>
+                      <div className="gchip-row" style={{ marginTop: 8 }}>
+                        {(skills.data?.items ?? []).map((s) => (
+                          <button key={s.key} className={`gchip ${skillKeys.includes(s.key) ? "on" : ""}`}
+                            onClick={() => setSkillKeys(skillKeys.includes(s.key)
+                              ? skillKeys.filter((k) => k !== s.key) : [...skillKeys, s.key])}>
+                            {s.name}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                        <button className="btn btn-ora btn-sm" onClick={save}>Save</button>
+                        <button className="btn btn-white btn-sm" onClick={reset}>Reset</button>
+                      </div>
+                      <div className="gform-lbl" style={{ marginTop: 12 }}>Effective prompt (live preview)</div>
+                      <pre style={{ marginTop: 6, whiteSpace: "pre-wrap", fontSize: 12,
+                        background: "var(--ora-l)", padding: 12, borderRadius: 10 }}>{effectivePreview}</pre>
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button className="btn btn-ora btn-sm" onClick={save}>Save</button>
-                  <button className="btn btn-outline btn-sm" onClick={preview}>Preview effective prompt</button>
-                  <button className="btn btn-white btn-sm" onClick={() => setEditing(null)}>Cancel</button>
-                </div>
-                {effective && (
-                  <pre style={{ marginTop: 10, whiteSpace: "pre-wrap", fontSize: 12,
-                    background: "var(--ora-l)", padding: 12, borderRadius: 10 }}>{effective}</pre>
-                )}
-              </div>
-            )}
+              );
+            })}
           </>
         )}
       </AsyncSection>
@@ -257,32 +284,66 @@ function SkillsSection({ skills, agents }: {
   const [key, setKey] = useState("");
   const [name, setName] = useState("");
   const [content, setContent] = useState("");
-  /** Skill mutations also reload agents: the backend detaches deleted skills from
-      agents server-side, so agent rows' skill_keys change too. The promise resolves
-      to the toast message so success feedback stays a single toast. */
+  const [editingSkill, setEditingSkill] = useState<SkillDef | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editContent, setEditContent] = useState("");
+
   const run = (p: Promise<string>) =>
     p.then((msg) => { skills.reload(); agents.reload(); toast(msg); },
            (e) => toast(`Failed: ${e instanceof Error ? e.message : e}`));
+
+  const toggleSkill = (s: SkillDef) => {
+    if (editingSkill?.key === s.key) { setEditingSkill(null); return; }
+    setEditingSkill(s); setEditName(s.name); setEditContent(s.content);
+  };
+  const saveSkill = () =>
+    run(api.updateSkill(editingSkill!.key, { name: editName, content: editContent })
+      .then(() => { setEditingSkill(null); return "Skill updated"; }));
 
   return (
     <SectionCard title="Skills" sub="Reusable prompt fragments attachable to agents">
       <AsyncSection q={skills}>
         {(d) => (
           <>
-            {d.items.map((s) => (
-              <div className="sdraft-row" key={s.key}>
-                <div style={{ flex: 1 }}>
-                  <div className="sdraft-title">{s.name}</div>
-                  <div className="sdraft-meta">{s.key} · {s.content.slice(0, 80)}</div>
+            {d.items.map((s) => {
+              const isOpen = editingSkill?.key === s.key;
+              return (
+                <div key={s.key} className={isOpen ? "agent-row-open" : ""}>
+                  <div className="sdraft-row">
+                    <div style={{ flex: 1 }}>
+                      <div className="sdraft-title">{s.name}</div>
+                      <div className="sdraft-meta" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                        <span className="skill-pill">{s.key}</span>
+                        <span className="skill-preview">{s.content.slice(0, 80)}</span>
+                      </div>
+                    </div>
+                    <button className="btn btn-blue-outline btn-sm" onClick={() => toggleSkill(s)}>
+                      {isOpen ? "Close" : "Edit"}
+                    </button>
+                    <button className="btn btn-outline btn-sm"
+                      onClick={() => run(api.deleteSkill(s.key).then((r) => r.detached_from.length
+                        ? `Skill deleted — detached from: ${r.detached_from.join(", ")}`
+                        : "Skill deleted"))}>
+                      <Ico k="trash" /> Delete
+                    </button>
+                  </div>
+                  {isOpen && (
+                    <div className="agent-edit-panel">
+                      <div className="gform-lbl">Display name</div>
+                      <input className="gprompt" style={{ minHeight: 0, height: 34, marginBottom: 10 }}
+                        aria-label="Skill display name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      <div className="gform-lbl">Content</div>
+                      <textarea className="gprompt" aria-label="Skill content" value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)} />
+                      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                        <button className="btn btn-ora btn-sm" onClick={saveSkill}>Save</button>
+                        <button className="btn btn-white btn-sm" onClick={() => setEditingSkill(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button className="btn btn-outline btn-sm"
-                  onClick={() => run(api.deleteSkill(s.key).then((r) => r.detached_from.length
-                    ? `Skill deleted — detached from: ${r.detached_from.join(", ")}`
-                    : "Skill deleted"))}>
-                  <Ico k="trash" /> Delete
-                </button>
-              </div>
-            ))}
+              );
+            })}
             <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 <input className="gprompt" style={{ flex: 1, minHeight: 0, height: 34 }}
