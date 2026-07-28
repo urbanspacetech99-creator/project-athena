@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { api } from "../api";
 import { ASSET } from "../assets";
 import { AsyncSection } from "../components/AsyncSection";
@@ -30,7 +31,7 @@ function Ktile({ fill, value, label, delta, icon }: {
   );
 }
 
-function NotifRow({ color, tag, title, sub }: { color: "red" | "ora" | "green"; tag: string; title: string; sub: string }) {
+function NotifRow({ color, tag, title, sub }: { color: "red" | "ora" | "green"; tag: string; title: string; sub: ReactNode }) {
   const c = { red: ["var(--red)", "var(--red-l)", "var(--red-d)"],
               ora: ["var(--ora)", "var(--ora-l)", "var(--ora-d)"],
               green: ["var(--green)", "var(--green-l)", "var(--green-d)"] }[color];
@@ -44,6 +45,14 @@ function NotifRow({ color, tag, title, sub }: { color: "red" | "ora" | "green"; 
       </div>
     </div>
   );
+}
+
+/** Splits a caption into body text and the trailing hashtag block, so they
+ *  can render on separate lines instead of running together inline. */
+function splitHashtags(content: string) {
+  const idx = content.search(/#\S+/);
+  if (idx === -1) return { body: content, tags: "" };
+  return { body: content.slice(0, idx).trimEnd(), tags: content.slice(idx).trim() };
 }
 
 /** WoW rows for the AI summary feed: WIN on gains, ANOMALY on drops (>=10% either way). */
@@ -124,11 +133,14 @@ export function HomeView({ onNavigate }: { onNavigate: (v: View) => void }) {
             {(e) => (
               <>
                 {deltaRows(deltas).map((r, i) => <NotifRow key={i} {...r} />)}
-                {e.top_post && (
-                  <NotifRow color="green" tag="WIN"
-                    title={`Top post this week — ${fmt(e.top_post.views)} views on ${e.top_post.platform}`}
-                    sub={e.top_post.content} />
-                )}
+                {e.top_post && (() => {
+                  const { body, tags } = splitHashtags(e.top_post.content);
+                  return (
+                    <NotifRow color="green" tag="WIN"
+                      title={`Top post this week — ${fmt(e.top_post.views)} views on ${e.top_post.platform}`}
+                      sub={<>{body}{tags && <><br /><br />{tags}</>}</>} />
+                  );
+                })()}
                 <NotifRow color="ora" tag="AI SUMMARY" title={e.insights.summary}
                   sub={`Sentiment: ${e.insights.sentiment}`} />
                 {e.insights.recurring_feedback.map((f, i) => (
