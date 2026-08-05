@@ -1,3 +1,7 @@
+# Athena — LOCAL DEVELOPMENT stack only: builds the image from source, publishes
+# ports on 127.0.0.1, and hot-reloads the dev console from a bind mount.
+# The production stack is a separate, self-contained file: deploy/docker-compose.yml
+# (prebuilt image, external urbanspace_intra network, expose-only). See deploy/README.md.
 services:
   db:
     image: postgres:16-alpine
@@ -18,7 +22,7 @@ services:
   api:
     build: .
     command: uvicorn athena.api.app:app --host 0.0.0.0 --port 8000
-    env_file: .env
+    env_file: backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena
       # Override the .env fixture URL too: its host is unreachable on the compose
@@ -33,7 +37,7 @@ services:
   worker:
     build: .
     command: python -m athena.worker.main
-    env_file: .env
+    env_file: backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena
       FIXTURE_DATABASE_URL: postgresql+psycopg://athena:athena@db:5432/athena_fixture

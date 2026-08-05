@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ASSET } from "../../assets";
 import { cacheDeletePrefix } from "../../lib/cache";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
-import { Ico } from "../../icons";
+import { Ico } from "../../components/Ico";
 import { CompetitorTab } from "./CompetitorTab";
 import { CustomerTab } from "./CustomerTab";
 import { SocialTab } from "./SocialTab";

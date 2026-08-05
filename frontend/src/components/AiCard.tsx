@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { Ico } from "../icons";
+import { Ico } from "./Ico";
 import { StatusBadge } from "./StatusBadge";
 import { TagPill } from "./TagPill";
 

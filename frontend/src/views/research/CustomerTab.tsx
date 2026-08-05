@@ -1,25 +1,12 @@
-import { api } from "../../api";
+import { api } from "../../lib/api";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
 import { useApi, useCachedApi } from "../../hooks/useApi";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
-import { Ico } from "../../icons";
-
-function RankedList({ items, light }: { items: string[]; light?: boolean }) {
-  return (
-    <>
-      {items.map((s, i) => (
-        <div className="svc-row" key={i}>
-          <div className="svc-top" style={light ? { color: "#fff" } : undefined}>
-            <span>#{i + 1} &nbsp; {s}</span>
-          </div>
-        </div>
-      ))}
-    </>
-  );
-}
+import { Ico } from "../../components/Ico";
+import { RankedList } from "./RankedList";
 
 export function CustomerTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   const questions = useApi(api.customerQuestions);

@@ -1,7 +1,7 @@
-.venv
+backend/.venv
 .git
 deploy
-tests
+backend/tests
 docs
 __pycache__
 *.pyc

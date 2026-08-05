@@ -1,4 +1,4 @@
-import { api } from "../../api";
+import { api } from "../../lib/api";
 import { ASSET } from "../../assets";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
@@ -7,44 +7,9 @@ import { SuggestedPosts } from "../../components/SuggestedPosts";
 import { TagPill } from "../../components/TagPill";
 import { useApi, useCachedApi } from "../../hooks/useApi";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
-import { Ico } from "../../icons";
 import { newestFirst } from "../../lib/derive";
 import { fmt } from "../../lib/fmt";
-import type { OwnPostRow } from "../../types";
-
-function splitHashtags(text: string) {
-  const words = text.split(/(\s+)/);
-  const caption: string[] = [];
-  const tags: string[] = [];
-  for (const w of words) {
-    if (/^#\S+/.test(w.trim())) tags.push(w.trim());
-    else caption.push(w);
-  }
-  return { caption: caption.join("").trim(), tags };
-}
-
-function RankRows({ posts }: { posts: OwnPostRow[] }) {
-  if (posts.length === 0) return <div className="empty-note">No posts ingested yet.</div>;
-  return (
-    <>
-      <div className="rank-header"><span /><span>Ranking</span><span>Likes</span><span>Interactions</span></div>
-      {posts.map((p, i) => {
-        const { caption, tags } = splitHashtags(p.title || p.content);
-        return (
-          <div className="rank-row" key={p.id}>
-            <span className="rank-num">{i + 1}</span>
-            <div className="rank-title-col">
-              <span className="rank-title">{caption}</span>
-              {tags.length > 0 && <span className="rank-tags">{tags.join(" ")}</span>}
-            </div>
-            <span className="rank-stat"><Ico k="heart" /> {p.likes}</span>
-            <span className="rank-stat"><Ico k="msg" /> {p.interactions}</span>
-          </div>
-        );
-      })}
-    </>
-  );
-}
+import { RankRows } from "./RankRows";
 
 export function SocialTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   // own_posts window_date is the post's publish date (stable across re-ingests), so rows never duplicate per week — no dedupe needed, unlike keyword volumes.

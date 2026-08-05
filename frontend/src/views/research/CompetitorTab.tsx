@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../../api";
+import { api } from "../../lib/api";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -7,50 +7,7 @@ import { SuggestedPosts } from "../../components/SuggestedPosts";
 import { useApi, useCachedApi } from "../../hooks/useApi";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { competitorPlatformStats, newestFirst } from "../../lib/derive";
-import type { CompetitorPlatformStat } from "../../lib/derive";
-
-function splitHashtags(text: string) {
-  const words = text.split(/(\s+)/);
-  const caption: string[] = [];
-  const tags: string[] = [];
-  for (const w of words) {
-    if (/^#\S+/.test(w.trim())) tags.push(w.trim());
-    else caption.push(w);
-  }
-  return { caption: caption.join("").trim(), tags };
-}
-
-function PlatformCard({ label, color, stat }: { label: string; color: string; stat: CompetitorPlatformStat }) {
-  return (
-    <div className="soc-card">
-      <div className="soc-hdr" style={{ background: color }}>
-        <span>{label}</span><small>{stat.commentCount} comments</small>
-        <StatusBadge kind="data" source="meta" light />
-      </div>
-      <div className="comp-block">
-        <div className="comp-num-lbl">No. of Posts Tracked</div>
-        <div className="comp-num-val">{stat.postsTracked}</div>
-        <div className="comp-last-active">Last active: {stat.lastActive ? stat.lastActive.slice(0, 10) : "—"}</div>
-      </div>
-      <div className="comp-sec-title">Recent Posts</div>
-      {stat.recent.length === 0
-        ? <div className="empty-note">No posts ingested yet.</div>
-        : (
-      <div className="comp-recent-list">
-        {stat.recent.map((p) => {
-          const { caption, tags } = splitHashtags(p.text);
-          return (
-            <div className="comp-post-item" key={p.id}>
-              <div className="comp-post-title">{caption}</div>
-              {tags.length > 0 && <div className="comp-post-tags">{tags.join(" ")}</div>}
-            </div>
-          );
-        })}
-      </div>
-        )}
-    </div>
-  );
-}
+import { PlatformCard } from "./PlatformCard";
 
 export function CompetitorTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   const competitors = useApi(api.listCompetitors);

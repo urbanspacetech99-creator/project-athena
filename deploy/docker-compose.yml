@@ -1,16 +1,14 @@
-version: "3"
-
 # Athena — production deployment compose.
 # Style matches the existing UrbanSpace prod stack (external urbanspace_intra
 # network, container_name/hostname, expose-only ports, restart: always).
 #
-# The `api` and `worker` services run the SAME image (athena-backend:0.2.0),
+# The `api` and `worker` services run the SAME image (athena-backend:0.3.0),
 # just different commands. They share one environment block via the YAML anchor
 # `&app_env` below — fill each value ONCE in `x-app-env` and both pick it up.
 #
 # Prereqs on the server (see deploy/README.md):
 #   docker network create urbanspace_intra
-#   docker load -i athena-backend-0.2.0.tar
+#   docker load -i athena-backend-0.3.0.tar
 
 # ---- shared application environment (fill values here once) ------------------
 # Only the names are provided; fill in secrets/values yourself. Vars with a safe
@@ -51,10 +49,11 @@ x-app-env: &app_env
   - META_PAGE_ID=
   - META_PAGE_TOKEN=
   - META_IG_USER_ID=
-  # Google (OAuth shared by reviews + ads)
+  # Google (one OAuth client, one grant per API: usually two different accounts)
   - GOOGLE_OAUTH_CLIENT_ID=
   - GOOGLE_OAUTH_CLIENT_SECRET=
-  - GOOGLE_REFRESH_TOKEN=
+  - GOOGLE_REVIEWS_REFRESH_TOKEN=   # scope business.manage
+  - GOOGLE_ADS_REFRESH_TOKEN=       # scope adwords
   - GBP_ACCOUNT_ID=
   - GBP_LOCATION_ID=
   - GADS_DEVELOPER_TOKEN=
@@ -103,7 +102,7 @@ services:
       - postgres
 
   api:
-    image: athena-backend:0.2.0
+    image: athena-backend:0.3.0
     container_name: athena-api
     hostname: athena-api
     command: uvicorn athena.api.app:app --host 0.0.0.0 --port 8000
@@ -120,7 +119,7 @@ services:
     restart: always
 
   worker:
-    image: athena-backend:0.2.0
+    image: athena-backend:0.3.0
     container_name: athena-worker
     hostname: athena-worker
     command: python -m athena.worker.main
@@ -133,5 +132,5 @@ services:
 
 networks:
   urbanspace_intra:
-    external:
-      name: urbanspace_intra
+    external: true
+    name: urbanspace_intra

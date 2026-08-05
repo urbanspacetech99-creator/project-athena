@@ -1,4 +1,4 @@
-import { Ico } from "../icons";
+import { Ico } from "./Ico";
 import { AiCard } from "./AiCard";
 
 /** Ports the prototype's suggBlock — see docs/draft/urbanspace_dashboard.html lines 665-682.

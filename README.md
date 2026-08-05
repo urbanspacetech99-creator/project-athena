@@ -34,34 +34,42 @@ The dashboard has four views:
 
 ### Quickstart
 
+The repo holds three apps: `backend/` (API + worker), `frontend/` (the marketing
+dashboard) and `dev-console/` (internal debug UI). Backend commands run from `backend/`.
+
 ```bash
+docker compose up -d db       # from the repo root
+cd backend
 uv sync --extra dev
 cp .env.example .env          # defaults: fixture data, fake AI — runs with no keys
-docker compose up -d db
 uv run uvicorn athena.api.app:app --reload   # auto-creates + migrates the DB on startup
-# dashboard (dev):
+# dashboard (dev), from the repo root:
 cd frontend && npm install && npm run dev     # http://localhost:5174, proxies to :8000
 ```
 
 To serve the dashboard from the API instead of the Vite dev server, build it once
-(`cd frontend && npm run build`) — it is served at `/` when `frontend/dist` exists, and
-turned off with `SERVE_FRONTEND=false`.
+(`cd frontend && npm run build`) — it is served at `/` when the built dist exists, and
+turned off with `SERVE_FRONTEND=false`. `FRONTEND_DIST` is resolved against the process
+CWD: the built-in default suits the container, and `backend/.env.example` ships
+`FRONTEND_DIST=../frontend/dist` for running locally from `backend/`.
 
 ### Tests & lint
 
 ```bash
-uv run pytest            # backend — needs Docker (testcontainers), or set TEST_DATABASE_URL to a Postgres URL
-uv run ruff check .
+cd backend && uv run pytest   # needs Docker (testcontainers), or set TEST_DATABASE_URL to a Postgres URL
+cd backend && uv run ruff check .
 cd frontend && npx vitest run
+cd dev-console && npx vitest run
 ```
 
-`TEST_DATABASE_URL` (an env var, or a `TEST_DATABASE_URL=` line in `.env`) points the backend
-tests at an existing Postgres and skips spinning up a throwaway container — useful where Docker
-isn't reachable.
+`TEST_DATABASE_URL` (an env var, or a `TEST_DATABASE_URL=` line in `backend/.env`) points the
+backend tests at an existing Postgres and skips spinning up a throwaway container — useful where
+Docker isn't reachable. Prefer a literal `127.0.0.1` over `localhost`: on Windows the latter
+resolves to IPv6 first, and a container publishing IPv4-only leaves connections hanging.
 
 ### Configuration
 
-Everything is env-driven via `.env` — see `.env.example` (grouped and commented). Highlights:
+Everything is env-driven via `backend/.env` — see `backend/.env.example` (grouped and commented). Highlights:
 
 | Env | Meaning |
 |---|---|
@@ -191,9 +199,9 @@ Three env vars toggle live vs fake behavior independently (all default to `fake`
 
 Canva refresh tokens rotate and are single-use, so a revoked lineage (e.g. from two
 instances refreshing concurrently) can only be recovered by minting a fresh token pair
-through the OAuth consent flow. [`scripts/canva_oauth.py`](scripts/canva_oauth.py) runs that
+through the OAuth consent flow. [`backend/scripts/canva_oauth.py`](backend/scripts/canva_oauth.py) runs that
 flow (Authorization Code + PKCE) and writes the new pair straight into the app DB — run
-`uv run python scripts/canva_oauth.py` and see the file's docstring for the full checklist.
+`cd backend && uv run python scripts/canva_oauth.py` and see the file's docstring for the full checklist.
 
 ## Config API (tag: config)
 CRUD for the Settings views in both the dashboard and the dev console — tracked competitors,

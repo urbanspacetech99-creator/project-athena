@@ -1,20 +1,11 @@
-import { api } from "../../api";
+import { api } from "../../lib/api";
 import { AsyncSection } from "../../components/AsyncSection";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
 import { useApi, useCachedApi } from "../../hooks/useApi";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
-import { keywordChanges, type KeywordChange } from "../../lib/derive";
-
-function ChangeTag({ ch }: { ch: KeywordChange | undefined }) {
-  if (!ch) return null;
-  if (ch.kind === "new") return <span className="mini-tag riser">NEW</span>;
-  return (
-    <span className={`kw-pct ${ch.pct < 0 ? "chg-dn" : "chg-up"}`}>
-      {ch.pct >= 0 ? "+" : ""}{ch.pct}%
-    </span>
-  );
-}
+import { keywordChanges } from "../../lib/derive";
+import { ChangeTag } from "./ChangeTag";
 
 export function TrendsTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   const trends = useCachedApi(CACHE_KEYS.internetTrends, api.internetTrends);

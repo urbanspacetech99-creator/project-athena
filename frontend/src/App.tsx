@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ASSET } from "./assets";
-import { ModesProvider } from "./modes";
-import { ToastProvider } from "./toast";
-import { GenerateView } from "./views/GenerateView";
-import { HomeView } from "./views/HomeView";
+import { ModesProvider } from "./providers/ModesProvider";
+import { ToastProvider } from "./providers/ToastProvider";
+import { GenerateView } from "./views/generate/GenerateView";
+import { HomeView } from "./views/home/HomeView";
 import { ResearchView } from "./views/research/ResearchView";
-import { SettingsView } from "./views/SettingsView";
+import { SettingsView } from "./views/settings/SettingsView";
 import type { GenRequest } from "./types";
 
 export type View = "home" | "research" | "generate" | "settings";

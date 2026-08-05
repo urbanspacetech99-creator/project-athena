@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { DataIngestTab } from "./components/DataIngestTab";
-import { GenerateTab } from "./components/GenerateTab";
-import { HomeTab } from "./components/HomeTab";
-import { ResearchTab } from "./components/ResearchTab";
-import { SettingsTab } from "./components/SettingsTab";
+import { DataIngestTab } from "./tabs/ingest/DataIngestTab";
+import { GenerateTab } from "./tabs/generate/GenerateTab";
+import { HomeTab } from "./tabs/home/HomeTab";
+import { ResearchTab } from "./tabs/research/ResearchTab";
+import { SettingsTab } from "./tabs/settings/SettingsTab";
 
 type Tab = "data" | "home" | "research" | "generate" | "settings";
 

@@ -1,4 +1,4 @@
-import { useModes } from "../modes";
+import { useModes } from "../providers/useModes";
 import type { Modes } from "../types";
 
 /** Live/Fixture dot + text (spec §4). kind="data" reads sources[source];

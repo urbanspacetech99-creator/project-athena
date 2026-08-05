@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const API_TARGET = process.env.VITE_API_TARGET ?? "http://localhost:8000";
-const API_PREFIXES = ["/health", "/data", "/home", "/research", "/generate", "/config"];
+const API_PREFIXES = ["/health", "/data", "/ingest", "/home", "/research", "/generate", "/config"];
 
 export default defineConfig({
   plugins: [react()],
