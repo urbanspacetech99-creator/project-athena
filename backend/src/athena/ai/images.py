@@ -12,7 +12,8 @@ GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 # 1x1 transparent PNG — deterministic stand-in when no image API key is present.
 _FAKE_PNG_B64 = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4"
                  "2mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
-
+# _FAKE_PNG_B64 definition
+PLACEHOLDER_PNG_B64 = _FAKE_PNG_B64  # reused when live image generation fails, not just fixture mode
 
 class GeneratedImage(BaseModel):
     mime_type: str

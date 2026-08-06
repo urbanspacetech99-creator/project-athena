@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useRef, useState } from "react";
 import { api } from "../../lib/api";
 import { AsyncSection } from "../../components/AsyncSection";
 import { ProgressBar } from "../../components/ProgressBar";
@@ -13,7 +13,7 @@ import { ChipRow } from "./ChipRow";
 import { ToggleChip } from "./ToggleChip";
 import { downloadPostPNG } from "../../lib/exportPng";
 import { useToast } from "../../providers/useToast";
-import type { GenRequest, PostOption, StreamProgress } from "../../types";
+import type { Draft, GenRequest, PostOption, StreamProgress } from "../../types";
 
 const PLATFORMS = ["Instagram", "Facebook"] as const;
 const TONES = ["Friendly", "Professional", "Urgent", "Funny"] as const;
@@ -27,6 +27,11 @@ const STYLES: Array<{ label: string; value: string }> = [
 ];
 const PLATFORM_COLOR: Record<string, string> = { instagram: "#E8651A", facebook: "#4A87BE" };
 const platformColor = (p: string) => PLATFORM_COLOR[p.toLowerCase()] ?? "#E8651A";
+
+// Kept in sync with backend/src/athena/ai/images.py PLACEHOLDER_PNG_B64 — used only to
+// detect drafts still showing the failure placeholder, never rendered directly.
+const PLACEHOLDER_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4" +
+  "2mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
 export function GenerateView({ request }: { request: GenRequest | null }) {
   const toast = useToast();
@@ -51,11 +56,20 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
   const [genProgress, setGenProgress] = useState<StreamProgress | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCaption, setEditCaption] = useState("");
+  const [manualCaptions, setManualCaptions] = useState<Record<number, string>>({});
+  const [autoSavedIndices, setAutoSavedIndices] = useState<Set<number>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<number | null>(null);
+  const [fetchingId, setFetchingId] = useState<number | null>(null);
+  const [fetchFailedIds, setFetchFailedIds] = useState<Set<number>>(new Set());
+  const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const doGenerate = async () => {
     setBusy(true);
     setGenProgress(null);
+    setManualCaptions({});
+    setAutoSavedIndices(new Set());
     try {
       const prefill = [context, prompt.trim(), `Target audience: ${audience}`]
         .filter(Boolean).join("\n\n");
@@ -75,13 +89,15 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
     }
   };
 
-  const saveOption = async (o: PostOption, plat: string) => {
+  const saveOption = async (o: PostOption, plat: string, index: number) => {
+    const manual = (manualCaptions[index] ?? "").trim();
+    if (o.caption_failed && !manual) { toast("Write a caption before saving"); return; }
     try {
       const hashtags = o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`));
+      const caption = o.caption_failed ? manual : [o.caption, ...hashtags].join(" ");
       await api.createDraft({
-        platform: plat.toLowerCase(),
-        caption: [o.caption, ...hashtags].join(" "),
-        image_b64: o.image_b64, canva_edit_url: o.canva_edit_url,
+        platform: plat.toLowerCase(), caption,
+        image_b64: o.image_b64, canva_edit_url: o.canva_edit_url, canva_design_id: o.canva_design_id
       });
       drafts.reload();
       toast("Saved to drafts");
@@ -89,6 +105,97 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
       toast(`Save failed: ${e instanceof Error ? e.message : e}`);
     }
   };
+
+  const autoSaveBeforeCanva = (o: PostOption, plat: string, index: number) => {
+  if (autoSavedIndices.has(index)) return;
+  setAutoSavedIndices((s) => new Set(s).add(index));
+  const manual = (manualCaptions[index] ?? "").trim();
+  const hashtags = o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`));
+  const caption = o.caption_failed ? manual : [o.caption, ...hashtags].join(" ");
+  api.createDraft({ platform: plat.toLowerCase(), caption, image_b64: o.image_b64, canva_edit_url: o.canva_edit_url, canva_design_id: o.canva_design_id })
+    .then(() => { drafts.reload(); toast("Draft auto-saved"); })
+    .catch(() => setAutoSavedIndices((s) => { const n = new Set(s); n.delete(index); return n; }));
+};
+
+const triggerUpload = (id: number) => { setUploadTargetId(id); fileInputRef.current?.click(); };
+
+const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  if (!file || uploadTargetId == null) return;
+  const targetId = uploadTargetId;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = String(reader.result).split(",")[1] ?? "";
+    try {
+      await api.updateDraft(targetId, { image_b64: base64 });
+      drafts.reload();
+      toast("Image uploaded");
+      setFetchFailedIds((s) => { const n = new Set(s); n.delete(targetId); return n; });
+    } catch (err) {
+      toast(`Upload failed: ${err instanceof Error ? err.message : err}`);
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+const fetchFromCanva = async (id: number) => {
+  setFetchingId(id);
+  try {
+    await api.fetchCanvaImage(id);
+    drafts.reload();
+    toast("Image updated from Canva");
+    setFetchFailedIds((s) => { const n = new Set(s); n.delete(id); return n; });
+  } catch (e) {
+    setFetchFailedIds((s) => new Set(s).add(id));
+    toast(`Couldn't fetch from Canva: ${e instanceof Error ? e.message : e}`);
+  } finally {
+    setFetchingId(null);
+  }
+};
+
+const openCanva = async (draft: Draft) => {
+  const win = window.open("", "_blank");
+  try {
+    const fresh = await api.openCanvaEdit(draft.id);
+    if (win) win.location.href = fresh.canva_edit_url; else window.open(fresh.canva_edit_url, "_blank");
+    drafts.reload();
+  } catch (e) {
+    win?.close();
+    toast(`Couldn't open Canva: ${e instanceof Error ? e.message : e}`);
+  }
+};
+
+  const copyCaption = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied to clipboard");
+  } catch {
+    toast("Copy failed — clipboard access blocked");
+  }
+};
+
+const retryOption = async (index: number) => {
+  setRetryingIndex(index);
+  try {
+    const prefill = [context, prompt.trim(), `Target audience: ${audience}`]
+      .filter(Boolean).join("\n\n");
+    const res = await api.generatePostStream({
+      platform: platform.toLowerCase(), tone: tone.toLowerCase(), length: length.toLowerCase(),
+      prefill_prompt: prefill, visual_style: style,
+      include_hashtags: flags.hashtags, include_cta: flags.cta,
+      include_emoji: flags.emoji, include_pricing: flags.pricing, options: 1,
+    }, () => {});
+    const fresh = res.options[0];
+    setGenResult((g) => g ? { ...g, options: g.options.map((o, i) => i === index ? fresh : o) } : g);
+    setManualCaptions((m) => { const next = { ...m }; delete next[index]; return next; });
+    toast(fresh.caption_failed ? "Still failing — try again shortly" : "Regenerated");
+  } catch (e) {
+    toast(`Retry failed: ${e instanceof Error ? e.message : e}`);
+  } finally {
+    setRetryingIndex(null);
+  }
+};
 
   const removeDraft = async (id: number) => {
     try { await api.deleteDraft(id); drafts.reload(); toast("Draft deleted"); }
@@ -114,6 +221,9 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
     });
     toast("Downloading PNG…");
   };
+
+  const anyCaptionFailed = genResult?.options.some((o) => o.caption_failed) ?? false;
+  const anyImageFailed = genResult?.options.some((o) => o.image_failed) ?? false;
 
   return (
     <div className="pgwrap">
@@ -199,29 +309,92 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
               <Ico k="refresh" /> Regenerate all
             </button>
           </div>
+          {(anyCaptionFailed || anyImageFailed) && (
+            <div className="gfail-banner" style={{ marginTop: 14 }}>
+              <div className="gfail-ico"><Ico k="alert" /></div>
+              <div>
+                <div className="gfail-title">
+                  {anyCaptionFailed && anyImageFailed
+                    ? "AI generation failed — showing manual draft editor"
+                    : anyCaptionFailed
+                    ? "AI caption generation failed — showing manual draft editor"
+                    : "AI image generation failed — showing placeholder images"}
+                </div>
+                <div className="gfail-sub">
+                  {anyCaptionFailed && anyImageFailed
+                    ? "Both the caption and image requests failed for one or more options. Edit the draft and design in Canva, or try generating again."
+                    : anyCaptionFailed
+                    ? "The caption request failed for one or more options. Write your own caption below, or try generating again."
+                    : "The image request failed for one or more options. Design in Canva to replace the placeholder, or try generating again."}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="gdraft-grid" style={{ marginTop: 14 }}>
             {genResult.options.map((o, i) => (
               <div className="gdraft-card" key={i}>
-                <div className={`gdraft-hdr${o.image_b64 ? " has-img" : ""}`}
+                <div className={`gdraft-hdr${o.image_b64 && !o.image_failed ? " has-img" : ""}`}
                   style={{ background: platformColor(genResult.platform), padding: 0 }}>
-                  {o.image_b64
-                    ? <img src={`data:${o.mime_type};base64,${o.image_b64}`} alt={`Draft ${i + 1} visual`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }}
-                        onClick={() => setLightboxSrc(`data:${o.mime_type};base64,${o.image_b64}`)} />
-                    : <><Ico k="camera" /><div className="gdraft-hdr-lbl">Draft {i + 1} &middot; {genResult.platform}</div></>}
+                  {o.image_failed ? (
+                    <>
+                      <Ico k="camera" />
+                      <div className="gdraft-hdr-lbl">Image generation unavailable</div>
+                    </>
+                  ) : o.image_b64 ? (
+                    <img src={`data:${o.mime_type};base64,${o.image_b64}`} alt={`Draft ${i + 1} visual`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }}
+                      onClick={() => setLightboxSrc(`data:${o.mime_type};base64,${o.image_b64}`)} />
+                  ) : (
+                    <><Ico k="camera" /><div className="gdraft-hdr-lbl">Draft {i + 1} &middot; {genResult.platform}</div></>
+                  )}
                 </div>
                 <div className="gdraft-body">
-                  <div className="gdraft-txt">{o.caption}</div>
-                  <div className="gdraft-tags">{o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")}</div>
+                  {o.caption_failed ? (
+                    <div>
+                      <div className="gform-lbl">AI caption unavailable — write your own</div>
+                      <textarea className="gprompt" aria-label="Manual caption" value={manualCaptions[i] ?? ""}
+                        onChange={(e) => setManualCaptions((m) => ({ ...m, [i]: e.target.value }))} />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="gdraft-txt">{o.caption}</div>
+                      <div className="gdraft-tags">{o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`)).join(" ")}</div>
+                    </>
+                  )}
                   <div className="gdraft-actions">
-                    <button className="btn btn-blue btn-sm" style={{ flex: 1, justifyContent: "center" }}
-                      onClick={() => exportOption(o, genResult.platform)}>Download PNG</button>
-                    <button className="btn btn-outline btn-sm" onClick={() => saveOption(o, genResult.platform)}>Save to draft</button>
-                    {o.canva_edit_url && (
-                      <a className="btn btn-outline btn-sm" href={o.canva_edit_url} target="_blank" rel="noreferrer">
-                        <Ico k="canva" /> Canva
-                      </a>
-                    )}
+                    <div className="gdraft-actions-primary">
+                      {o.image_failed ? (
+                        o.canva_edit_url && (
+                          <a className="btn btn-blue btn-sm" href={o.canva_edit_url} target="_blank" rel="noreferrer"
+                            onClick={() => autoSaveBeforeCanva(o, genResult.platform, i)}>
+                            <Ico k="canva" /> Design in Canva
+                          </a>
+                        )
+                      ) : (
+                        <button className="btn btn-blue btn-sm"
+                          onClick={() => exportOption(o, genResult.platform)}>Download PNG</button>
+                      )}
+                    </div>
+                    <div className="gdraft-actions-secondary">
+                      <button className="btn btn-outline btn-sm" onClick={() => saveOption(o, genResult.platform, i)}>Save to draft</button>
+                      {!o.caption_failed && (
+                        <button className="btn btn-outline btn-sm"
+                          onClick={() => copyCaption([o.caption, ...o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`))].join(" "))}>
+                          Copy
+                        </button>
+                      )}
+                      {o.caption_failed && (
+                        <button className="btn btn-outline btn-sm" onClick={() => retryOption(i)} disabled={retryingIndex === i}>
+                          <Ico k="refresh" /> {retryingIndex === i ? "Retrying…" : "Retry AI generation"}
+                        </button>
+                      )}
+                      {o.canva_edit_url && !o.image_failed && (
+                        <a className="btn btn-outline btn-sm" href={o.canva_edit_url} target="_blank" rel="noreferrer"
+                          onClick={() => autoSaveBeforeCanva(o, genResult.platform, i)}>
+                          <Ico k="canva" /> Canva
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -232,6 +405,8 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
 
       <div className="card sdraft-card">
         <div className="sdraft-card-hdr">Saved drafts</div>
+        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" style={{ display: "none" }}
+          onChange={onFileSelected} />
         <AsyncSection q={drafts}>
           {(d) => d.items.length === 0
             ? <div className="empty-note">No saved drafts yet. Generate posts and click "Save to draft" to store them here.</div>
@@ -250,37 +425,58 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
                     <>
                       <div style={{ flex: 1, display: "flex", gap: 12, alignItems: "flex-start" }}>
                       {draft.image_b64 && (
-                        <img
-                          src={`data:image/png;base64,${draft.image_b64}`}
-                          alt="Draft visual"
-                          style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, cursor: "zoom-in" }}
-                          onClick={() => setLightboxSrc(`data:image/png;base64,${draft.image_b64}`)}
-                        />
+                        draft.image_b64 === PLACEHOLDER_PNG_B64 ? (
+                          <div className="sdraft-thumb-placeholder"><Ico k="camera" /></div>
+                        ) : (
+                          <img
+                            src={`data:image/png;base64,${draft.image_b64}`}
+                            alt="Draft visual"
+                            className="sdraft-thumb"
+                            onClick={() => setLightboxSrc(`data:image/png;base64,${draft.image_b64}`)}
+                          />
+                        )
                       )}
                         <div>
                           <div className="sdraft-title">{draft.caption}</div>
                           <div className="sdraft-meta">{draft.platform} · saved {draft.created_at.slice(0, 10)}</div>
                         </div>
                       </div>
-                      <button className="btn btn-blue-outline btn-sm"
-                        onClick={() => { setEditingId(draft.id); setEditCaption(draft.caption); }}>
-                        <Ico k="pencil" /> Edit
-                      </button>
-                      <button className="btn btn-blue-outline btn-sm"
-                        onClick={() => { void downloadPostPNG({
-                          color: platformColor(draft.platform),
-                          imageDataUrl: draft.image_b64 ? `data:image/png;base64,${draft.image_b64}` : undefined,
-                          onError: toast }); toast("Downloading PNG…"); }}>
-                        Download PNG
-                      </button>
-                      {draft.canva_edit_url && (
-                        <a className="btn btn-outline btn-sm" href={draft.canva_edit_url} target="_blank" rel="noreferrer">
-                          <Ico k="canva" /> Canva
-                        </a>
-                      )}
-                      <button className="btn btn-outline btn-sm" onClick={() => removeDraft(draft.id)}>
-                        <Ico k="trash" /> Delete
-                      </button>
+                      <div className="sdraft-actions">
+                        <div className="sdraft-actions-row">
+                          <button className="btn btn-blue-outline btn-sm"
+                            onClick={() => { setEditingId(draft.id); setEditCaption(draft.caption); }}>
+                            <Ico k="pencil" /> Edit
+                          </button>
+                          {draft.image_b64 !== PLACEHOLDER_PNG_B64 && (
+                            <button className="btn btn-blue-outline btn-sm"
+                              onClick={() => { void downloadPostPNG({
+                                color: platformColor(draft.platform),
+                                imageDataUrl: draft.image_b64 ? `data:image/png;base64,${draft.image_b64}` : undefined,
+                                onError: toast }); toast("Downloading PNG…"); }}>
+                              Download PNG
+                            </button>
+                          )}
+                          {draft.canva_edit_url && (
+                            <button className="btn btn-outline btn-sm" onClick={() => openCanva(draft)}>
+                              <Ico k="canva" /> Canva
+                            </button>
+                          )}
+                        </div>
+                        <div className="sdraft-actions-row">
+                          {draft.canva_design_id && (
+                            <button className="btn btn-blue-outline btn-sm" onClick={() => fetchFromCanva(draft.id)}
+                              disabled={fetchingId === draft.id}>
+                              <Ico k="canva" /> {fetchingId === draft.id ? "Fetching…" : "Fetch latest from Canva"}
+                            </button>
+                          )}
+                          {(fetchFailedIds.has(draft.id) || !draft.canva_design_id) && (
+                            <button className="btn btn-outline btn-sm" onClick={() => triggerUpload(draft.id)}>Upload PNG</button>
+                          )}
+                          <button className="btn btn-outline btn-sm" onClick={() => removeDraft(draft.id)}>
+                            <Ico k="trash" /> Delete
+                          </button>
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>

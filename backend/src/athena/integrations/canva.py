@@ -17,10 +17,13 @@ _REFRESH_BUFFER_S = 300  # refresh when <5 min of validity remains
 class CanvaHandoff(BaseModel):
     asset_id: str
     edit_url: str
+    design_id: str
 
 
 class CanvaClient(Protocol):
     def upload_and_edit_url(self, image: GeneratedImage, title: str) -> CanvaHandoff: ...
+    def fetch_latest_image(self, design_id: str) -> GeneratedImage: ...
+    def get_design_edit_url(self, design_id: str) -> str | None: ...
 
 
 def parse_asset_id(body: dict) -> str:
@@ -39,6 +42,18 @@ def parse_edit_url(body: dict) -> str:
         raise ValueError("no edit_url in Canva design response")
     return edit_url
 
+def parse_design_id(body: dict) -> str:
+    design_id = (body.get("design") or {}).get("id")
+    if not design_id:
+        raise ValueError("no design id in Canva design response")
+    return design_id
+
+#def design_id_from_edit_url(edit_url: str) -> str:
+    #"""Extract the design ID from a Canva edit URL (canva.com/design/{ID}/...)."""
+    #parts = edit_url.split("/design/")
+    #if len(parts) < 2:
+     #   raise ValueError(f"cannot parse design id from edit_url: {edit_url!r}")
+    #return parts[1].split("/")[0]
 
 def upload_metadata_header(name: str) -> str:
     """Value for the `Asset-Upload-Metadata` header: a JSON object whose `name_base64` is the
@@ -151,7 +166,7 @@ class CanvaConnectClient:
                   "design_type": {"type": "custom", "width": 1080, "height": 1080},
                   "asset_id": asset_id, "title": name}, timeout=60.0)
         des.raise_for_status()
-        return CanvaHandoff(asset_id=asset_id, edit_url=parse_edit_url(des.json()))
+        return CanvaHandoff(asset_id=asset_id, edit_url=parse_edit_url(des.json()),design_id=parse_design_id(des.json()))
 
     def _await_upload(self, job: dict, auth: dict, httpx, attempts: int = 20,
                       delay: float = 1.5) -> dict:
@@ -170,14 +185,67 @@ class CanvaConnectClient:
             job = g.json().get("job") or {}
         raise ValueError(f"canva asset upload did not complete (last status={job.get('status')!r})")
 
+    def fetch_latest_image(self, design_id: str) -> GeneratedImage:
+        import base64
+        import httpx
+        auth = {"Authorization": f"Bearer {self._access_token()}"}
+        log.info("canva export request", extra={"mode": "live", "design_id": design_id})
+        resp = httpx.post(
+            f"{CANVA_BASE}/exports", headers={**auth, "Content-Type": "application/json"},
+            json={"design_id": design_id, "format": {"type": "png"}}, timeout=30.0)
+        if resp.status_code >= 400:
+            log.error("canva export request failed",
+                      extra={"status": resp.status_code, "body": resp.text[:500]})
+        resp.raise_for_status()
+        job = self._await_export(resp.json().get("job") or {}, auth, httpx)
+        urls = job.get("urls") or []
+        if not urls:
+            raise ValueError(f"canva export completed with no urls (job={job})")
+        img = httpx.get(urls[0], timeout=60.0)
+        img.raise_for_status()
+        return GeneratedImage(mime_type="image/png", data_b64=base64.b64encode(img.content).decode())
+
+    def _await_export(self, job: dict, auth: dict, httpx, attempts: int = 20,
+                      delay: float = 1.5) -> dict:
+        import time
+        for _ in range(attempts):
+            status = job.get("status")
+            if status == "success":
+                return job
+            if status == "failed":
+                raise ValueError(f"canva export failed: {job.get('error')}")
+            time.sleep(delay)
+            g = httpx.get(f"{CANVA_BASE}/exports/{job['id']}", headers=auth, timeout=30.0)
+            g.raise_for_status()
+            job = g.json().get("job") or {}
+        raise ValueError(f"canva export did not complete (last status={job.get('status')!r})")
+
+    def get_design_edit_url(self, design_id: str) -> str | None:
+        """Returns the edit_url if the design still exists, None if Canva returns 404."""
+        import httpx
+        auth = {"Authorization": f"Bearer {self._access_token()}"}
+        resp = httpx.get(f"{CANVA_BASE}/designs/{design_id}", headers=auth, timeout=30.0)
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return parse_edit_url(resp.json())
 
 class FakeCanvaClient:
     """Deterministic client for tests / no-key dev."""
 
+    def get_design_edit_url(self, design_id: str) -> str | None:
+        return "https://www.canva.com/design/DAF_FAKE/edit"
+
     def upload_and_edit_url(self, image: GeneratedImage, title: str) -> CanvaHandoff:
         log.info("canva asset upload", extra={"mode": "fake", "title": title})
         return CanvaHandoff(asset_id="Msd_FAKE",
-                            edit_url="https://www.canva.com/design/DAF_FAKE/edit")
+                            edit_url="https://www.canva.com/design/DAF_FAKE/edit",
+                            design_id="DAF_FAKE")
+
+    def fetch_latest_image(self, design_id: str) -> GeneratedImage:
+        log.info("canva export request", extra={"mode": "fake", "design_id": design_id})
+        from athena.ai.images import PLACEHOLDER_PNG_B64
+        return GeneratedImage(mime_type="image/png", data_b64=PLACEHOLDER_PNG_B64)
 
 
 def get_canva_client(settings: Settings, session_factory=None) -> CanvaClient:

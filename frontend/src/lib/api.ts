@@ -65,11 +65,12 @@ export const api = {
   generatePost: (body: GeneratePostIn) =>
     request<GeneratePostOut>("/generate/post", { method: "POST", body: JSON.stringify(body) }),
   listDrafts: () => request<ListResponse<Draft>>("/generate/drafts"),
-  createDraft: (body: { platform: string; caption: string; image_b64?: string; canva_edit_url?: string }) =>
+  createDraft: (body: { platform: string; caption: string; image_b64?: string; canva_edit_url?: string; canva_design_id?: string }) =>
     request<Draft>("/generate/drafts", { method: "POST", body: JSON.stringify(body) }),
-  updateDraft: (id: number, body: { caption?: string; platform?: string }) =>
+  updateDraft: (id: number, body: { caption?: string; platform?: string; image_b64?: string }) =>
     request<Draft>(`/generate/drafts/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteDraft: (id: number) => request<void>(`/generate/drafts/${id}`, { method: "DELETE" }),
+  fetchCanvaImage: (id: number) => request<Draft>(`/generate/drafts/${id}/fetch-canva`, { method: "POST" }),
   recommendations: () => request<Recommendations>("/generate/recommendations"),
   recommendationsStream: (onProgress: (p: StreamProgress) => void) =>
     streamNdjson<Recommendations>(API_BASE + "/generate/recommendations/stream", {}, onProgress),
@@ -108,4 +109,6 @@ export const api = {
     request<SkillDef>(`/config/skills/${key}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteSkill: (key: string) =>
     request<{ deleted: string; detached_from: string[] }>(`/config/skills/${key}`, { method: "DELETE" }),
+
+  openCanvaEdit: (id: number) => request<Draft>(`/generate/drafts/${id}/canva-edit`, { method: "POST" }),
 };

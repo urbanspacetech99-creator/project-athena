@@ -197,7 +197,10 @@ class PostOptionOut(BaseModel):
     image_b64: str
     mime_type: str
     canva_edit_url: str
+    canva_design_id: str
     visual_style: str
+    caption_failed: bool = False
+    image_failed: bool = False
 
 
 class GeneratePostOut(BaseModel):
@@ -209,11 +212,13 @@ class DraftIn(BaseModel):
     caption: str
     image_b64: str = ""
     canva_edit_url: str = ""
+    canva_design_id: str = ""
 
 
 class DraftUpdateIn(BaseModel):
     caption: str | None = None
     platform: str | None = None
+    image_b64: str | None = None
 
 
 class DraftOut(_ORM):
@@ -222,6 +227,7 @@ class DraftOut(_ORM):
     caption: str
     image_b64: str
     canva_edit_url: str
+    canva_design_id: str
     created_at: datetime
 
 

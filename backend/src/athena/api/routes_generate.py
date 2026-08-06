@@ -61,7 +61,8 @@ def generate_post_stream(body: schemas.GeneratePostIn, session: Session = Depend
              summary="Save a draft post")
 def create_draft(body: schemas.DraftIn, session: Session = Depends(get_session)):
     return drafts.create_draft(session, platform=body.platform, caption=body.caption,
-                               image_b64=body.image_b64, canva_edit_url=body.canva_edit_url)
+                               image_b64=body.image_b64, canva_edit_url=body.canva_edit_url,
+                               canva_design_id=body.canva_design_id)
 
 
 @router.get("/drafts", response_model=schemas.ListResponse[schemas.DraftOut],
@@ -81,10 +82,14 @@ def get_draft(draft_id: int, session: Session = Depends(get_session)):
 
 
 @router.patch("/drafts/{draft_id}", response_model=schemas.DraftOut,
-              summary="Edit a saved draft's text")
+              summary="Edit a saved draft's text or image")
 def update_draft(draft_id: int, body: schemas.DraftUpdateIn,
                  session: Session = Depends(get_session)):
-    draft = drafts.update_draft(session, draft_id, caption=body.caption, platform=body.platform)
+    try:
+        draft = drafts.update_draft(session, draft_id, caption=body.caption, platform=body.platform,
+                                    image_b64=body.image_b64)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if draft is None:
         raise HTTPException(status_code=404, detail="draft not found")
     return draft
@@ -115,3 +120,26 @@ def recommendations_stream(session: Session = Depends(get_session), llm=Depends(
     events = aggregate.aggregated_recommendations_stream(session, llm)
     return StreamingResponse(_ndjson(events), media_type=_NDJSON,
                              headers={"X-Accel-Buffering": "no"})
+
+
+@router.post("/drafts/{draft_id}/fetch-canva", response_model=schemas.DraftOut,
+             summary="Pull the current exported image from this draft's Canva design")
+def fetch_canva_draft(draft_id: int, session: Session = Depends(get_session),
+                      canva=Depends(get_canva_client)):
+    try:
+        draft = drafts.fetch_canva_image(session, draft_id, canva)
+    except Exception as e:
+        log.warning("canva fetch failed", extra={"draft_id": draft_id}, exc_info=True)
+        raise HTTPException(status_code=502, detail=f"could not fetch from Canva: {e}") from e
+    if draft is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return draft
+
+@router.post("/drafts/{draft_id}/canva-edit", response_model=schemas.DraftOut,
+             summary="Open this draft's Canva design, recreating it if it was deleted")
+def open_canva_draft(draft_id: int, session: Session = Depends(get_session),
+                     canva=Depends(get_canva_client)):
+    draft = drafts.open_canva_design(session, draft_id, canva)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return draft

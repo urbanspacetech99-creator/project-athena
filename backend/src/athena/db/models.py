@@ -96,6 +96,7 @@ class SavedDraft(Base):
     image_url: Mapped[str] = mapped_column(String(1024), default="")
     image_b64: Mapped[str] = mapped_column(Text, default="")
     canva_edit_url: Mapped[str] = mapped_column(String(1024), default="")
+    canva_design_id: Mapped[str] = mapped_column(String(128), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 

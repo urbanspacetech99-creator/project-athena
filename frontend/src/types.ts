@@ -22,7 +22,8 @@ export interface Competitor { activity_summary: string; recommendations: Recomme
 export interface CompetitorResponse { insights: Competitor; titles: string[]; prefill_prompt: string; }
 
 export interface PostOption { caption: string; hashtags: string[]; image_b64: string;
-  mime_type: string; canva_edit_url: string; visual_style: string; }
+  mime_type: string; canva_edit_url: string; canva_design_id: string; visual_style: string;
+  caption_failed: boolean; image_failed: boolean; }
 export interface GeneratePostOut { options: PostOption[]; }
 export interface GeneratePostIn {
   platform: string; tone: string; length: string; prefill_prompt: string; visual_style: string;
@@ -30,7 +31,7 @@ export interface GeneratePostIn {
   include_pricing: boolean; options: number;
 }
 export interface Draft { id: number; platform: string; caption: string; image_b64: string;
-  canva_edit_url: string; created_at: string; }
+  canva_edit_url: string; created_at: string; canva_design_id: string;}
 export interface Recommendations { titles: string[]; prefill_prompt: string; rationale: string; }
 
 export interface CompetitorRow { id: number; platform: "facebook" | "instagram" | "google"; name: string;
