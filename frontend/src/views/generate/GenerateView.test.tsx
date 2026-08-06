@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 import { ToastProvider } from "../../providers/ToastProvider";
+import { GenerateProvider } from "../../providers/GenerateProvider";
+import { useGenerate } from "../../providers/useGenerate";
 import { GenerateView } from "./GenerateView";
 
 afterEach(() => vi.restoreAllMocks());
@@ -58,11 +61,28 @@ function stubFetch(overrides: Record<string, unknown> = {}) {
   return calls;
 }
 
+/** Test harness replacing the old `request` prop: prefill now goes through the
+ *  GenerateProvider context via loadPrefill(), not a prop on GenerateView. */
+function Harness({ request }: { request: { title: string; context: string } | null }) {
+  const { loadPrefill } = useGenerate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (request) loadPrefill(request.title, request.context); }, []);
+  return <GenerateView />;
+}
+
+function renderGenerate(request: { title: string; context: string } | null = null) {
+  return render(
+    <ToastProvider>
+      <GenerateProvider>
+        <Harness request={request} />
+      </GenerateProvider>
+    </ToastProvider>
+  );
+}
+
 test("prefills prompt from handoff, generates with combined prefill_prompt", async () => {
   const calls = stubFetch();
-  render(<ToastProvider>
-    <GenerateView request={{ title: "Beat them on price", context: "Competitor context" }} />
-  </ToastProvider>);
+  renderGenerate({ title: "Beat them on price", context: "Competitor context" });
   expect(await screen.findByDisplayValue("Beat them on price")).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("button", { name: /generate 3 options/i }));
@@ -81,7 +101,7 @@ test("prefills prompt from handoff, generates with combined prefill_prompt", asy
 
 test("lists persisted drafts and saves an option as a draft", async () => {
   const calls = stubFetch();
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   expect(await screen.findByText("Saved caption")).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("button", { name: /generate 3 options/i }));
@@ -93,14 +113,14 @@ test("lists persisted drafts and saves an option as a draft", async () => {
 
 test("shows AI recommendations with rationale", async () => {
   stubFetch();
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   expect(await screen.findByText("3 months free")).toBeInTheDocument();
   expect(await screen.findByText(/Promo interest is highest/)).toBeInTheDocument();
 });
 
 test("saving keeps the platform the options were generated for", async () => {
   const calls = stubFetch();
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   await userEvent.click(screen.getByRole("button", { name: /generate 3 options/i }));
   await screen.findByText("Real AI caption");
   // switching the platform chip AFTER generating must not relabel or mis-save the options
@@ -112,7 +132,7 @@ test("saving keeps the platform the options were generated for", async () => {
 
 test("edits a saved draft's caption via PATCH", async () => {
   const calls = stubFetch();
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   await screen.findByText("Saved caption");
   await userEvent.click(screen.getByRole("button", { name: /edit/i }));
   const box = screen.getByDisplayValue("Saved caption");
@@ -125,7 +145,7 @@ test("edits a saved draft's caption via PATCH", async () => {
 
 test("generated image renders in a square card header", async () => {
   stubFetch();
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   await userEvent.click(screen.getByRole("button", { name: /generate 3 options/i }));
   const img = await screen.findByAltText("Draft 1 visual");
   expect(img.closest(".gdraft-hdr")!.className).toContain("has-img");
@@ -133,19 +153,19 @@ test("generated image renders in a square card header", async () => {
 
 test("recommendations served from cache on remount — no refetch", async () => {
   stubFetch();
-  const first = render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  const first = renderGenerate();
   expect(await screen.findByText("3 months free")).toBeInTheDocument();
   first.unmount();
 
   const calls = stubFetch(); // fresh mock: any recommendations call would be recorded here
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   expect(await screen.findByText("3 months free")).toBeInTheDocument();
   expect(calls.some((c) => c.url.startsWith("/generate/recommendations"))).toBe(false);
 });
 
 test("refresh on AI Recommendations busts cache and re-streams", async () => {
   const calls = stubFetch();
-  render(<ToastProvider><GenerateView request={null} /></ToastProvider>);
+  renderGenerate();
   expect(await screen.findByText("3 months free")).toBeInTheDocument();
   const before = calls.filter((c) => c.url.startsWith("/generate/recommendations/stream")).length;
   await userEvent.click(screen.getByRole("button", { name: /refresh/i }));

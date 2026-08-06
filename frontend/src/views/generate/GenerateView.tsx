@@ -1,240 +1,80 @@
-import React, { useRef, useState } from "react";
-import { api } from "../../lib/api";
+import { useState } from "react";
+import { Ico } from "../../components/Ico";
 import { AsyncSection } from "../../components/AsyncSection";
 import { ProgressBar } from "../../components/ProgressBar";
 import { StatusBadge } from "../../components/StatusBadge";
 import { SuggestedPosts } from "../../components/SuggestedPosts";
 import { TagPill } from "../../components/TagPill";
-import { useApi, useCachedApi } from "../../hooks/useApi";
-import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { useModes } from "../../providers/useModes";
-import { Ico } from "../../components/Ico";
+import { useGenerate } from "../../providers/useGenerate";
+import { PLATFORMS, TONES, LENGTHS, AUDIENCES, STYLES,
+  platformColor, PLACEHOLDER_PNG_B64 } from "../../providers/GenerateProvider";
 import { ChipRow } from "./ChipRow";
 import { ToggleChip } from "./ToggleChip";
 import { downloadPostPNG } from "../../lib/exportPng";
-import { useToast } from "../../providers/useToast";
-import type { Draft, GenRequest, PostOption, StreamProgress } from "../../types";
+import type { Draft } from "../../types";
 
-const PLATFORMS = ["Instagram", "Facebook"] as const;
-const TONES = ["Friendly", "Professional", "Urgent", "Funny"] as const;
-const LENGTHS = ["Short", "Medium", "Long"] as const;
-const AUDIENCES = ["Homeowners", "E-commerce Sellers", "Startups/SMEs", "Businesses"] as const;
-const STYLES: Array<{ label: string; value: string }> = [
-  { label: "Before/After", value: "before_after" },
-  { label: "Product", value: "clean_product" },
-  { label: "Lifestyle", value: "lifestyle" },
-  { label: "Text-forward", value: "text_forward" },
-];
-const PLATFORM_COLOR: Record<string, string> = { instagram: "#E8651A", facebook: "#4A87BE" };
-const platformColor = (p: string) => PLATFORM_COLOR[p.toLowerCase()] ?? "#E8651A";
-
-// Kept in sync with backend/src/athena/ai/images.py PLACEHOLDER_PNG_B64 — used only to
-// detect drafts still showing the failure placeholder, never rendered directly.
-const PLACEHOLDER_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4" +
-  "2mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
-export function GenerateView({ request }: { request: GenRequest | null }) {
-  const toast = useToast();
-  const drafts = useApi(api.listDrafts);
-  const [recoProgress, setRecoProgress] = useState<StreamProgress | null>(null);
-  const recos = useCachedApi(CACHE_KEYS.recommendations, () => api.recommendationsStream(setRecoProgress));
+export function GenerateView() {
   const modes = useModes();
+  const {
+    drafts, recos, recoProgress, setRecoProgress,toast,
+    platform, setPlatform, tone, setTone, length, setLength, audience, setAudience,
+    style, setStyle, prompt, setPrompt, context, setContext, flags, setFlags,
+    genResult, busy, genProgress,
+    editingId, setEditingId, editCaption, setEditCaption,
+    manualCaptions, setManualCaptions,
+    fileInputRef, fetchingId, fetchFailedIds, pushingId, retryingIndex,
+    lightboxSrc, setLightboxSrc,
+    doGenerate, saveOption, autoSaveBeforeCanva, triggerUpload, onFileSelected,
+    fetchFromCanva, openCanva, pushToCanva, copyCaption, retryOption,
+    removeDraft, saveCaption, exportOption,
+  } = useGenerate();
 
-  const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>("Instagram");
-  const [tone, setTone] = useState<(typeof TONES)[number]>("Friendly");
-  const [length, setLength] = useState<(typeof LENGTHS)[number]>("Short");
-  const [audience, setAudience] = useState<(typeof AUDIENCES)[number]>("Homeowners");
-  const [style, setStyle] = useState(STYLES[0].value);
-  const [prompt, setPrompt] = useState(request?.title ?? "");
-  const [context, setContext] = useState(request?.context ?? "");
-  const [flags, setFlags] = useState({ hashtags: true, cta: true, emoji: false, pricing: false });
-  // Snapshot of the last generation: options stay labeled/saved/exported under the
-  // platform they were generated for; the live chip only affects the NEXT generation.
-  const [genResult, setGenResult] =
-    useState<{ platform: (typeof PLATFORMS)[number]; options: PostOption[] } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [genProgress, setGenProgress] = useState<StreamProgress | null>(null);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editCaption, setEditCaption] = useState("");
-  const [manualCaptions, setManualCaptions] = useState<Record<number, string>>({});
-  const [autoSavedIndices, setAutoSavedIndices] = useState<Set<number>>(new Set());
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadTargetId, setUploadTargetId] = useState<number | null>(null);
-  const [fetchingId, setFetchingId] = useState<number | null>(null);
-  const [pushingId, setPushingId] = useState<number | null>(null);
-  const [fetchFailedIds, setFetchFailedIds] = useState<Set<number>>(new Set());
-  const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [heroIgId, setHeroIgId] = useState<number | null>(null);
+  const [heroFbId, setHeroFbId] = useState<number | null>(null);
 
-  const doGenerate = async () => {
-    setBusy(true);
-    setGenProgress(null);
-    setManualCaptions({});
-    setAutoSavedIndices(new Set());
-    try {
-      const prefill = [context, prompt.trim(), `Target audience: ${audience}`]
-        .filter(Boolean).join("\n\n");
-      const res = await api.generatePostStream({
-        platform: platform.toLowerCase(), tone: tone.toLowerCase(), length: length.toLowerCase(),
-        prefill_prompt: prefill, visual_style: style,
-        include_hashtags: flags.hashtags, include_cta: flags.cta,
-        include_emoji: flags.emoji, include_pricing: flags.pricing, options: 3,
-      }, setGenProgress);
-      setGenResult({ platform, options: res.options });
-      toast(`Generated ${res.options.length} options`);
-    } catch (e) {
-      toast(`Generation failed: ${e instanceof Error ? e.message : e}`);
-    } finally {
-      setBusy(false);
-      setGenProgress(null);
-    }
-  };
-
-  const saveOption = async (o: PostOption, plat: string, index: number) => {
-    const manual = (manualCaptions[index] ?? "").trim();
-    if (o.caption_failed && !manual) { toast("Write a caption before saving"); return; }
-    try {
-      const hashtags = o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`));
-      const caption = o.caption_failed ? manual : [o.caption, ...hashtags].join(" ");
-      await api.createDraft({
-        platform: plat.toLowerCase(), caption,
-        image_b64: o.image_b64, canva_edit_url: o.canva_edit_url, canva_design_id: o.canva_design_id
-      });
-      drafts.reload();
-      toast("Saved to drafts");
-    } catch (e) {
-      toast(`Save failed: ${e instanceof Error ? e.message : e}`);
-    }
-  };
-
-  const autoSaveBeforeCanva = (o: PostOption, plat: string, index: number) => {
-  if (autoSavedIndices.has(index)) return;
-  setAutoSavedIndices((s) => new Set(s).add(index));
-  const manual = (manualCaptions[index] ?? "").trim();
-  const hashtags = o.hashtags.map((h) => (h.startsWith("#") ? h : `#${h}`));
-  const caption = o.caption_failed ? manual : [o.caption, ...hashtags].join(" ");
-  api.createDraft({ platform: plat.toLowerCase(), caption, image_b64: o.image_b64, canva_edit_url: o.canva_edit_url, canva_design_id: o.canva_design_id })
-    .then(() => { drafts.reload(); toast("Draft auto-saved"); })
-    .catch(() => setAutoSavedIndices((s) => { const n = new Set(s); n.delete(index); return n; }));
-};
-
-const triggerUpload = (id: number) => { setUploadTargetId(id); fileInputRef.current?.click(); };
-
-const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  e.target.value = "";
-  if (!file || uploadTargetId == null) return;
-  const targetId = uploadTargetId;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const base64 = String(reader.result).split(",")[1] ?? "";
-    try {
-      await api.updateDraft(targetId, { image_b64: base64 });
-      drafts.reload();
-      toast("Image uploaded");
-      setFetchFailedIds((s) => { const n = new Set(s); n.delete(targetId); return n; });
-    } catch (err) {
-      toast(`Upload failed: ${err instanceof Error ? err.message : err}`);
-    }
-  };
-  reader.readAsDataURL(file);
-};
-
-const fetchFromCanva = async (id: number) => {
-  setFetchingId(id);
-  try {
-    await api.fetchCanvaImage(id);
-    drafts.reload();
-    toast("Image updated from Canva");
-    setFetchFailedIds((s) => { const n = new Set(s); n.delete(id); return n; });
-  } catch (e) {
-    setFetchFailedIds((s) => new Set(s).add(id));
-    toast(`Couldn't fetch from Canva: ${e instanceof Error ? e.message : e}`);
-  } finally {
-    setFetchingId(null);
-  }
-};
-
-const pushToCanva = async (id: number) => {
-  setPushingId(id);
-  try {
-    await api.pushToCanva(id);
-    drafts.reload();
-    toast("Pushed to Canva");
-  } catch (e) {
-    toast(`Couldn't push to Canva: ${e instanceof Error ? e.message : e}`);
-  } finally {
-    setPushingId(null);
-  }
-};
-
-const openCanva = async (draft: Draft) => {
-  const win = window.open("", "_blank");
-  try {
-    const fresh = await api.openCanvaEdit(draft.id);
-    if (win) win.location.href = fresh.canva_edit_url; else window.open(fresh.canva_edit_url, "_blank");
-    drafts.reload();
-  } catch (e) {
-    win?.close();
-    toast(`Couldn't open Canva: ${e instanceof Error ? e.message : e}`);
-  }
-};
-
-  const copyCaption = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast("Copied to clipboard");
-  } catch {
-    toast("Copy failed — clipboard access blocked");
-  }
-};
-
-const retryOption = async (index: number) => {
-  setRetryingIndex(index);
-  try {
-    const prefill = [context, prompt.trim(), `Target audience: ${audience}`]
-      .filter(Boolean).join("\n\n");
-    const res = await api.generatePostStream({
-      platform: platform.toLowerCase(), tone: tone.toLowerCase(), length: length.toLowerCase(),
-      prefill_prompt: prefill, visual_style: style,
-      include_hashtags: flags.hashtags, include_cta: flags.cta,
-      include_emoji: flags.emoji, include_pricing: flags.pricing, options: 1,
-    }, () => {});
-    const fresh = res.options[0];
-    setGenResult((g) => g ? { ...g, options: g.options.map((o, i) => i === index ? fresh : o) } : g);
-    setManualCaptions((m) => { const next = { ...m }; delete next[index]; return next; });
-    toast(fresh.caption_failed ? "Still failing — try again shortly" : "Regenerated");
-  } catch (e) {
-    toast(`Retry failed: ${e instanceof Error ? e.message : e}`);
-  } finally {
-    setRetryingIndex(null);
-  }
-};
-
-  const removeDraft = async (id: number) => {
-    try { await api.deleteDraft(id); drafts.reload(); toast("Draft deleted"); }
-    catch (e) { toast(`Delete failed: ${e instanceof Error ? e.message : e}`); }
-  };
-
-  const saveCaption = async (id: number) => {
-    try {
-      await api.updateDraft(id, { caption: editCaption });
-      setEditingId(null);
-      drafts.reload();
-      toast("Draft updated");
-    } catch (e) {
-      toast(`Update failed: ${e instanceof Error ? e.message : e}`);
-    }
-  };
-
-  const exportOption = (o: PostOption, plat: string) => {
-    void downloadPostPNG({
-      color: platformColor(plat),
-      imageDataUrl: o.image_b64 ? `data:${o.mime_type};base64,${o.image_b64}` : undefined,
-      onError: toast,
-    });
-    toast("Downloading PNG…");
-  };
+  const renderDraftActions = (hero: Draft) => (
+    <div className="hero-actions">
+      <div className="hero-actions-row">
+        <button className="btn btn-blue-outline btn-sm"
+          onClick={() => { setEditingId(hero.id); setEditCaption(hero.caption); }}>
+          <Ico k="pencil" /> Edit
+        </button>
+        {hero.image_b64 !== PLACEHOLDER_PNG_B64 && (
+          <button className="btn btn-blue-outline btn-sm" onClick={() => { void downloadPostPNG({
+            color: platformColor(hero.platform),
+            imageDataUrl: hero.image_b64 ? `data:image/png;base64,${hero.image_b64}` : undefined, onError: toast }); }}>
+            Download PNG
+          </button>
+        )}
+        {hero.canva_edit_url && (
+          <button className="btn btn-outline btn-sm" onClick={() => openCanva(hero)}>
+            <Ico k="canva" /> Canva
+          </button>
+        )}
+      </div>
+      <div className="hero-actions-row">
+        {hero.canva_design_id && (
+          <button className="btn btn-blue-outline btn-sm" disabled={fetchingId === hero.id}
+            onClick={() => fetchFromCanva(hero.id)}>
+            <Ico k="canva" /> {fetchingId === hero.id ? "Fetching…" : "Fetch latest from Canva"}
+          </button>
+        )}
+        {hero.image_b64 !== PLACEHOLDER_PNG_B64 && (
+          <button className="btn btn-blue-outline btn-sm" disabled={pushingId === hero.id}
+            onClick={() => pushToCanva(hero.id)}>
+            <Ico k="canva" /> {pushingId === hero.id ? "Pushing…" : "Push to Canva"}
+          </button>
+        )}
+        {(fetchFailedIds.has(hero.id) || !hero.canva_design_id) && (
+          <button className="btn btn-outline btn-sm" onClick={() => triggerUpload(hero.id)}>Upload PNG</button>
+        )}
+        <button className="btn btn-outline btn-sm" onClick={() => removeDraft(hero.id)}>
+          <Ico k="trash" /> Delete
+        </button>
+      </div>
+    </div>
+  );
 
   const anyCaptionFailed = genResult?.options.some((o) => o.caption_failed) ?? false;
   const anyImageFailed = genResult?.options.some((o) => o.image_failed) ?? false;
@@ -421,87 +261,139 @@ const retryOption = async (index: number) => {
         <div className="sdraft-card-hdr">Saved drafts</div>
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" style={{ display: "none" }}
           onChange={onFileSelected} />
-        <AsyncSection q={drafts}>
-          {(d) => d.items.length === 0
-            ? <div className="empty-note">No saved drafts yet. Generate posts and click "Save to draft" to store them here.</div>
-            : <>{d.items.map((draft) => (
-                <div className="sdraft-row" style={{ paddingLeft: 22, paddingRight: 22 }} key={draft.id}>
-                  {editingId === draft.id ? (
-                    <div style={{ flex: 1 }}>
-                      <textarea className="gprompt" aria-label="Edit draft caption" value={editCaption}
-                        onChange={(e) => setEditCaption(e.target.value)} disabled={busy}/>
-                      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                        <button className="btn btn-ora btn-sm" onClick={() => saveCaption(draft.id)}>Save</button>
-                        <button className="btn btn-white btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={{ flex: 1, display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      {draft.image_b64 && (
-                        draft.image_b64 === PLACEHOLDER_PNG_B64 ? (
-                          <div className="sdraft-thumb-placeholder"><Ico k="camera" /></div>
-                        ) : (
-                          <img
-                            src={`data:image/png;base64,${draft.image_b64}`}
-                            alt="Draft visual"
-                            className="sdraft-thumb"
-                            onClick={() => setLightboxSrc(`data:image/png;base64,${draft.image_b64}`)}
-                          />
-                        )
-                      )}
-                        <div>
-                          <div className="sdraft-title">{draft.caption}</div>
-                          <div className="sdraft-meta">{draft.platform} · saved {draft.created_at.slice(0, 10)}</div>
+        <div style={{ padding: 22 }}>
+          <AsyncSection q={drafts}>
+            {(d) => {
+              if (d.items.length === 0) {
+                return <div className="empty-note">No saved drafts yet. Generate posts and click "Save to draft" to store them here.</div>;
+              }
+              const igDrafts = d.items.filter((x) => x.platform.toLowerCase() === "instagram");
+              const fbDrafts = d.items.filter((x) => x.platform.toLowerCase() === "facebook");
+              const igHero = igDrafts.find((x) => x.id === heroIgId) ?? igDrafts[0];
+              const fbHero = fbDrafts.find((x) => x.id === heroFbId) ?? fbDrafts[0];
+              return (
+                <div className="hsplit-grid">
+                                    <div className="hsplit-col">
+                    <div className="hsplit-plat-lbl">Instagram</div>
+                    {igHero ? (
+                      <>
+                        <div className="hero-block">
+                          <div className="hero-row">
+                            <div className="hero-ig">
+                            <div className="hero-ig-hdr">
+                              <div className="hero-ig-avatar"><Ico k="social" /></div>
+                              <div className="hero-ig-handle">urbanspace.sg</div>
+                            </div>
+                            <div className="hero-ig-img">
+                              {igHero.image_b64 && igHero.image_b64 !== PLACEHOLDER_PNG_B64 ? (
+                                <img src={`data:image/png;base64,${igHero.image_b64}`} alt="Draft visual"
+                                  onClick={() => setLightboxSrc(`data:image/png;base64,${igHero.image_b64}`)} />
+                              ) : (
+                                <Ico k="camera" />
+                              )}
+                            </div>
+                            <div className="hero-ig-icons">
+                              <Ico k="heart" /><Ico k="msg" /><Ico k="send" />
+                              <div style={{ flex: 1 }} />
+                              <Ico k="bookmark" />
+                            </div>
+                            <div className="hero-ig-body">
+                              {editingId === igHero.id ? (
+                                <div>
+                                  <textarea className="gprompt" aria-label="Edit draft caption" value={editCaption}
+                                    onChange={(e) => setEditCaption(e.target.value)} />
+                                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                                    <button className="btn btn-ora btn-sm" onClick={() => saveCaption(igHero.id)}>Save</button>
+                                    <button className="btn btn-white btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <><b>urbanspace.sg</b> {igHero.caption}</>
+                              )}
+                            </div>
+                          </div>
+                          <div className="hero-rail-vert">
+                            {igDrafts.map((dr) => (
+                              <div key={dr.id} className={`hero-thumb ${dr.id === igHero.id ? "on" : ""}`}
+                                onClick={() => setHeroIgId(dr.id)}>
+                                {dr.image_b64 && dr.image_b64 !== PLACEHOLDER_PNG_B64
+                                  ? <img src={`data:image/png;base64,${dr.image_b64}`} alt="" />
+                                  : <Ico k="camera" />}
+                              </div>
+                            ))}
+                          </div>
+                          </div>
+                          {renderDraftActions(igHero)}
                         </div>
-                      </div>
-                      <div className="sdraft-actions">
-                        <div className="sdraft-actions-row">
-                          <button className="btn btn-blue-outline btn-sm"
-                            onClick={() => { setEditingId(draft.id); setEditCaption(draft.caption); }}>
-                            <Ico k="pencil" /> Edit
-                          </button>
-                          {draft.image_b64 !== PLACEHOLDER_PNG_B64 && (
-                            <button className="btn btn-blue-outline btn-sm"
-                              onClick={() => { void downloadPostPNG({
-                                color: platformColor(draft.platform),
-                                imageDataUrl: draft.image_b64 ? `data:image/png;base64,${draft.image_b64}` : undefined,
-                                onError: toast }); toast("Downloading PNG…"); }}>
-                              Download PNG
-                            </button>
-                          )}
-                          {draft.canva_edit_url && (
-                            <button className="btn btn-outline btn-sm" onClick={() => openCanva(draft)}>
-                              <Ico k="canva" /> Canva
-                            </button>
-                          )}
+                      </>
+                    ) : (
+                      <div className="hero-empty">No Instagram drafts yet — save one to see it here.</div>
+                    )}
+                  </div>
+
+                  <div className="hsplit-col">
+                    <div className="hsplit-plat-lbl">Facebook</div>
+                    {fbHero ? (
+                      <>
+                      <div className="hero-block"> 
+                        <div className="hero-row">
+                          <div className="hero-fb">
+                            <div className="hero-fb-hdr">
+                              <div className="hero-fb-avatar"><Ico k="social" /></div>
+                              <div style={{ flex: 1 }}>
+                                <div className="hero-fb-name">UrbanSpace Self Storage</div>
+                                <div className="hero-fb-meta">saved {fbHero.created_at.slice(0, 10)} <Ico k="world" /></div>
+                              </div>
+                            </div>
+                            {editingId === fbHero.id ? (
+                              <div style={{ padding: "0 13px 12px" }}>
+                                <textarea className="gprompt" aria-label="Edit draft caption" value={editCaption}
+                                  onChange={(e) => setEditCaption(e.target.value)} />
+                                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                                  <button className="btn btn-ora btn-sm" onClick={() => saveCaption(fbHero.id)}>Save</button>
+                                  <button className="btn btn-white btn-sm" onClick={() => setEditingId(null)}>Cancel</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="hero-fb-cap">{fbHero.caption}</div>
+                            )}
+                            <div className="hero-fb-img">
+                              {fbHero.image_b64 && fbHero.image_b64 !== PLACEHOLDER_PNG_B64 ? (
+                                <img src={`data:image/png;base64,${fbHero.image_b64}`} alt="Draft visual"
+                                  onClick={() => setLightboxSrc(`data:image/png;base64,${fbHero.image_b64}`)} />
+                              ) : (
+                                <Ico k="camera" />
+                              )}
+                            </div>
+                            <div className="hero-fb-actionbar">
+                              <div className="hero-fb-action"><Ico k="thumbUp" /> Like</div>
+                              <div className="hero-fb-action"><Ico k="msg" /> Comment</div>
+                              <div className="hero-fb-action"><Ico k="share" /> Share</div>
+                            </div>
+                          </div>
+                          <div className="hero-rail-vert">
+                            {fbDrafts.map((dr) => (
+                              <div key={dr.id} className={`hero-thumb ${dr.id === fbHero.id ? "on" : ""}`}
+                                onClick={() => setHeroFbId(dr.id)}>
+                                {dr.image_b64 && dr.image_b64 !== PLACEHOLDER_PNG_B64
+                                  ? <img src={`data:image/png;base64,${dr.image_b64}`} alt="" />
+                                  : <Ico k="camera" />}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="sdraft-actions-row">
-                          {draft.canva_design_id && (
-                            <button className="btn btn-blue-outline btn-sm" onClick={() => fetchFromCanva(draft.id)}
-                              disabled={fetchingId === draft.id}>
-                              <Ico k="canva" /> {fetchingId === draft.id ? "Fetching…" : "Fetch latest from Canva"}
-                            </button>
-                          )}
-                          {draft.image_b64 !== PLACEHOLDER_PNG_B64 && (
-                            <button className="btn btn-blue-outline btn-sm" onClick={() => pushToCanva(draft.id)}
-                              disabled={pushingId === draft.id}>
-                              <Ico k="canva" /> {pushingId === draft.id ? "Pushing…" : "Push to Canva"}
-                            </button>
-                          )}
-                          {(fetchFailedIds.has(draft.id) || !draft.canva_design_id) && (
-                            <button className="btn btn-outline btn-sm" onClick={() => triggerUpload(draft.id)}>Upload PNG</button>
-                          )}
-                          <button className="btn btn-outline btn-sm" onClick={() => removeDraft(draft.id)}>
-                            <Ico k="trash" /> Delete
-                          </button>
-                        </div>
+                        {renderDraftActions(fbHero)}
                       </div>
-                    </>
-                  )}
+                      </>
+                    ) : (
+                      <div className="hero-empty">No Facebook drafts yet — save one to see it here.</div>
+                    )}
+                  </div>
                 </div>
-              ))}</>}
-        </AsyncSection>
+              );
+            }}
+          </AsyncSection>
+        </div>
       </div>
 
       <AsyncSection q={recos} progress={recoProgress}>
