@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ASSET } from "./assets";
+//import { ASSET } from "./assets";
 import { ModesProvider } from "./providers/ModesProvider";
 import { ToastProvider } from "./providers/ToastProvider";
 import { GenerateView } from "./views/generate/GenerateView";
@@ -56,7 +56,7 @@ export function App() {
           </div>
           <div className="sb-spacer" />
         </nav>
-        <main className="main" style={{ backgroundImage: `url(${ASSET.BG_GRAD})` }}>
+        <main className="main" style={{ background: "#FFEAD9" }}>
           {view === "home" && <HomeView onNavigate={setView} />}
           {view === "research" && <ResearchView onGenerate={generateFrom} />}
           {view === "generate" && <GenerateView key={genRequest?.title ?? "blank"} request={genRequest} />}

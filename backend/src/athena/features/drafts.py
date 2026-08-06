@@ -35,7 +35,18 @@ def open_canva_design(session: Session, draft_id: int, canva: CanvaClient) -> Sa
     log.info("recreated deleted canva design", extra={"draft_id": draft_id})
     return draft
 
-
+def push_to_canva(session: Session, draft_id: int, canva: CanvaClient) -> SavedDraft | None:
+    draft = session.get(SavedDraft, draft_id)
+    if draft is None:
+        return None
+    image = GeneratedImage(mime_type="image/png", data_b64=draft.image_b64)
+    handoff = canva.upload_and_edit_url(image, title=draft.platform)
+    draft.canva_edit_url = handoff.edit_url
+    draft.canva_design_id = handoff.design_id
+    session.commit()
+    session.refresh(draft)
+    log.info("pushed image to new canva design", extra={"draft_id": draft_id})
+    return draft
 
 def create_draft(session: Session, platform: str, caption: str, image_b64: str = "",
                  canva_edit_url: str = "", canva_design_id: str = "") -> SavedDraft:

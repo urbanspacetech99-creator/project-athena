@@ -143,3 +143,16 @@ def open_canva_draft(draft_id: int, session: Session = Depends(get_session),
     if draft is None:
         raise HTTPException(status_code=404, detail="draft not found")
     return draft
+
+@router.post("/drafts/{draft_id}/push-canva", response_model=schemas.DraftOut,
+             summary="Push this draft's current image to a new Canva design")
+def push_canva_draft(draft_id: int, session: Session = Depends(get_session),
+                     canva=Depends(get_canva_client)):
+    try:
+        draft = drafts.push_to_canva(session, draft_id, canva)
+    except Exception as e:
+        log.warning("canva push failed", extra={"draft_id": draft_id}, exc_info=True)
+        raise HTTPException(status_code=502, detail=f"could not push to Canva: {e}") from e
+    if draft is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return draft

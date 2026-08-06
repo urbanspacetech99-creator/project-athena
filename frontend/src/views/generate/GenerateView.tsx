@@ -61,6 +61,7 @@ export function GenerateView({ request }: { request: GenRequest | null }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTargetId, setUploadTargetId] = useState<number | null>(null);
   const [fetchingId, setFetchingId] = useState<number | null>(null);
+  const [pushingId, setPushingId] = useState<number | null>(null);
   const [fetchFailedIds, setFetchFailedIds] = useState<Set<number>>(new Set());
   const [retryingIndex, setRetryingIndex] = useState<number | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
@@ -151,6 +152,19 @@ const fetchFromCanva = async (id: number) => {
     toast(`Couldn't fetch from Canva: ${e instanceof Error ? e.message : e}`);
   } finally {
     setFetchingId(null);
+  }
+};
+
+const pushToCanva = async (id: number) => {
+  setPushingId(id);
+  try {
+    await api.pushToCanva(id);
+    drafts.reload();
+    toast("Pushed to Canva");
+  } catch (e) {
+    toast(`Couldn't push to Canva: ${e instanceof Error ? e.message : e}`);
+  } finally {
+    setPushingId(null);
   }
 };
 
@@ -467,6 +481,12 @@ const retryOption = async (index: number) => {
                             <button className="btn btn-blue-outline btn-sm" onClick={() => fetchFromCanva(draft.id)}
                               disabled={fetchingId === draft.id}>
                               <Ico k="canva" /> {fetchingId === draft.id ? "Fetching…" : "Fetch latest from Canva"}
+                            </button>
+                          )}
+                          {draft.image_b64 !== PLACEHOLDER_PNG_B64 && (
+                            <button className="btn btn-blue-outline btn-sm" onClick={() => pushToCanva(draft.id)}
+                              disabled={pushingId === draft.id}>
+                              <Ico k="canva" /> {pushingId === draft.id ? "Pushing…" : "Push to Canva"}
                             </button>
                           )}
                           {(fetchFailedIds.has(draft.id) || !draft.canva_design_id) && (

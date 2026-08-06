@@ -111,4 +111,5 @@ export const api = {
     request<{ deleted: string; detached_from: string[] }>(`/config/skills/${key}`, { method: "DELETE" }),
 
   openCanvaEdit: (id: number) => request<Draft>(`/generate/drafts/${id}/canva-edit`, { method: "POST" }),
+  pushToCanva: (id: number) => request<Draft>(`/generate/drafts/${id}/push-canva`, { method: "POST" }),
 };
