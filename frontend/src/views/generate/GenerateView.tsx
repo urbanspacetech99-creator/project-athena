@@ -383,7 +383,7 @@ const retryOption = async (index: number) => {
                           Copy
                         </button>
                       )}
-                      {o.caption_failed && (
+                      {(o.caption_failed || o.image_failed) && (
                         <button className="btn btn-outline btn-sm" onClick={() => retryOption(i)} disabled={retryingIndex === i}>
                           <Ico k="refresh" /> {retryingIndex === i ? "Retrying…" : "Retry AI generation"}
                         </button>
