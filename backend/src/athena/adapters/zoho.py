@@ -41,15 +41,23 @@ class ZohoChatsAdapter(SourceAdapter):
             tok = tok_resp.json()
             access = tok.get("access_token", "")
             api_domain = tok.get("api_domain", f"https://www.zohoapis.{dc}")
-            body = c.get(f"{api_domain}/crm/v6/{module}",
+            resp = c.get(f"{api_domain}/crm/v6/{module}",
                          params={"fields": f"id,{field},Created_Time", "per_page": 200},
-                         headers={"Authorization": f"Zoho-oauthtoken {access}"}).json()
-        # Zoho CRM's actual error shape is {"code": ..., "message": ..., "status": "error"}
-        # (no top-level "error" key), validated live 2026-07-10 -- see
-        # docs/LIVE_API_VALIDATION.md row 7. raise_on_error_envelope only catches the
-        # generic {"error": {...}} shape shared with the other adapters; that's intentional
-        # here (keeps normal {"data": [...]} responses untouched) rather than hand-rolling
-        # Zoho-specific error detection.
+                         headers={"Authorization": f"Zoho-oauthtoken {access}"})
+        # "Module exists, holds no records" is a 204 with an empty body, which .json()
+        # cannot parse. Genuinely empty, so answer with the empty result shape.
+        if resp.status_code == 204:
+            return {"data": []}
+        body = resp.json()
+        # Zoho CRM reports failure as {"code", "message", "status": "error"} with no
+        # top-level "error" key (validated live 2026-07-10, see docs/LIVE_API_VALIDATION.md
+        # row 7), so raise_on_error_envelope never saw it: a 400 normalized to zero rows and
+        # the ingest reported success. That is how a deleted ZOHO_MODULE went unnoticed
+        # until 2026-08-07. Name the failure; `code` is the actionable half (INVALID_MODULE,
+        # REQUIRED_PARAM_MISSING, OAUTH_SCOPE_MISMATCH).
+        if isinstance(body, dict) and body.get("status") == "error":
+            raise RuntimeError(f"zoho crm api error: {body.get('code')} — "
+                               f"{body.get('message')} (module={module!r}, field={field!r})")
         return raise_on_error_envelope(body, "zoho crm api")
 
     def normalize(self, raw) -> list[dict]:

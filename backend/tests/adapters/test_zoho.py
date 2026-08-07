@@ -31,28 +31,73 @@ def test_transcript_field_is_config_driven():
     assert rows[0]["transcript"] == "Pricing enquiry for a 5x5 storage unit."
 
 
-def test_fetch_live_raises_on_error_envelope(monkeypatch):
-    """A generic {"error": {...}} body from the record-fetch call must raise, not
-    silently normalize to zero chats -- proves the raise_on_error_envelope call-site
-    wiring, not just the helper itself."""
+class FakeTokenResp:
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {"access_token": "tok", "api_domain": "https://www.zohoapis.com"}
+
+
+def _stub_live(monkeypatch, body, status_code=200):
+    """Point fetch_live's two HTTP calls at a canned token and record-fetch response."""
     import httpx
 
-    from athena.config import Settings
-
-    class FakeTokenResp:
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"access_token": "tok", "api_domain": "https://www.zohoapis.com"}
-
     class FakeRecordsResp:
+        def __init__(self):
+            self.status_code = status_code
+
         def json(self):
-            return {"error": {"code": "INVALID_TOKEN", "message": "invalid oauth token"}}
+            return body
 
     monkeypatch.setattr(httpx.Client, "post", lambda self, *a, **k: FakeTokenResp())
     monkeypatch.setattr(httpx.Client, "get", lambda self, *a, **k: FakeRecordsResp())
 
+
+def test_fetch_live_raises_on_error_envelope(monkeypatch):
+    """A generic {"error": {...}} body from the record-fetch call must raise, not
+    silently normalize to zero chats -- proves the raise_on_error_envelope call-site
+    wiring, not just the helper itself."""
+    from athena.config import Settings
+
+    _stub_live(monkeypatch, {"error": {"code": "INVALID_TOKEN",
+                                       "message": "invalid oauth token"}})
+
     adapter = ZohoChatsAdapter(mode="live", settings=Settings())
     with pytest.raises(RuntimeError, match="zoho crm api"):
         adapter.fetch_live()
+
+
+def test_fetch_live_raises_on_zoho_status_error(monkeypatch):
+    """Zoho's own failure shape carries no top-level "error" key. Left unchecked it
+    normalized to zero rows and reported a SUCCESSFUL ingest, which is how a deleted
+    ZOHO_MODULE stayed invisible. The module name must reach the message."""
+    from athena.config import Settings
+
+    _stub_live(monkeypatch, {"code": "INVALID_MODULE", "status": "error",
+                             "details": {"resource_path_index": 0},
+                             "message": "the module name given seems to be invalid"},
+               status_code=400)
+
+    adapter = ZohoChatsAdapter(mode="live", settings=Settings(_env_file=None,
+                                                              zoho_module="Call_Logs"))
+    with pytest.raises(RuntimeError, match="INVALID_MODULE.*Call_Logs"):
+        adapter.fetch_live()
+
+
+def test_fetch_live_treats_204_as_no_records(monkeypatch):
+    """A module with no records answers 204 with an empty body -- .json() cannot parse
+    that, so the status has to be read before the body."""
+    from athena.config import Settings
+
+    def _explode():
+        raise ValueError("no body to decode")
+
+    _stub_live(monkeypatch, None, status_code=204)
+    import httpx
+    monkeypatch.setattr(httpx.Client, "get", lambda self, *a, **k: type(
+        "R", (), {"status_code": 204, "json": staticmethod(_explode)})())
+
+    adapter = ZohoChatsAdapter(mode="live", settings=Settings())
+    assert adapter.fetch_live() == {"data": []}
+    assert adapter.normalize(adapter.fetch_live()) == []

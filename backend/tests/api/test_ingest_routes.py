@@ -45,6 +45,22 @@ def test_trigger_ingestion_skipped_when_fixture_pinned(client_with_db, session):
     assert session.query(GoogleReview).count() == 0
 
 
+def test_whole_source_failure_returns_502_naming_the_cause(client_with_db, monkeypatch):
+    """A source that fails outright is upstream's fault, and the Settings page can only
+    show what `detail` carries -- a bare 500 tells the reader nothing."""
+    from athena.adapters.zoho import ZohoChatsAdapter
+
+    def boom(self, **kwargs):
+        raise RuntimeError("zoho crm api error: INVALID_MODULE (module='Call_Logs')")
+
+    monkeypatch.setattr(ZohoChatsAdapter, "fetch_fixture", boom)
+    resp = client_with_db.post("/ingest/zoho")
+    assert resp.status_code == 502
+    detail = resp.json()["detail"]
+    assert "zoho ingestion failed" in detail
+    assert "INVALID_MODULE" in detail and "Call_Logs" in detail
+
+
 def test_trigger_competitor_surfaces_failed_name(client_with_db, monkeypatch):
     """A competitor whose fetch blows up must be reported by name in `failed`,
     not just swallowed into the totals -- proves the job-dict -> IngestResponse wiring."""

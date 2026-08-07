@@ -20,14 +20,18 @@ export function TrendsTab({ onGenerate }: { onGenerate: (title: string, context:
         for (const k of [...t.keywords].sort((a, b) => a.weekly_search_volume - b.weekly_search_volume)) byKeyword.set(k.keyword, k);
         const sorted = [...byKeyword.values()].sort((a, b) => b.weekly_search_volume - a.weekly_search_volume);
         const mx = Math.max(1, ...sorted.map((k) => k.weekly_search_volume));
-        if (sorted.length === 0)
-          return <div className="empty-note">No keyword data yet — tracked keywords appear after the weekly ingest runs.</div>;
         return (
           <>
+            {/* The empty state sits INSIDE the first card rather than replacing the whole
+                tab: the card header carries the Live/Fixture badge, and a live source with
+                no rows yet is exactly when that badge explains the gap. Every sibling tab
+                keeps its badge in the header for the same reason. */}
             <div className="ct-card" style={{ marginBottom: 16 }}>
               <div className="ct-title">Weekly Search Volume in Singapore <StatusBadge kind="data" source="google_ads" /></div>
               <div className="ct-sub">Google search volume · tracked keywords{changes ? " · % change is week-over-week" : ""}</div>
-              {sorted.map((k) => (
+              {sorted.length === 0
+                ? <div className="empty-note">No keyword data yet — tracked keywords appear after the weekly ingest runs.</div>
+                : sorted.map((k) => (
                 <div className="bar-row" key={k.keyword}>
                   <div className="bar-lbl">{k.keyword}</div>
                   <div className="bar-track">
@@ -42,25 +46,29 @@ export function TrendsTab({ onGenerate }: { onGenerate: (title: string, context:
                 </div>
               ))}
             </div>
-            <div className="ct-card" style={{ marginBottom: 16 }}>
-              <div className="ct-title">Keyword ranking <StatusBadge kind="data" source="google_ads" /></div>
-              <div className="ct-sub">Exact search volume for each tracked keyword</div>
-              {sorted.map((k, i) => (
-                <div className="kw-row" key={k.keyword}>
-                  <div className="kw-num">{i + 1}</div>
-                  <div style={{ flex: 1 }}>
-                    <div className="kw-title-row"><span className="kw-title">{k.keyword}</span></div>
-                  </div>
-                  <div className="kw-right">
-                    <div className="kw-val">{k.weekly_search_volume.toLocaleString()}/wk</div>
-                    <ChangeTag ch={changes?.get(k.keyword)} />
-                  </div>
+            {sorted.length > 0 && (
+              <>
+                <div className="ct-card" style={{ marginBottom: 16 }}>
+                  <div className="ct-title">Keyword ranking <StatusBadge kind="data" source="google_ads" /></div>
+                  <div className="ct-sub">Exact search volume for each tracked keyword</div>
+                  {sorted.map((k, i) => (
+                    <div className="kw-row" key={k.keyword}>
+                      <div className="kw-num">{i + 1}</div>
+                      <div style={{ flex: 1 }}>
+                        <div className="kw-title-row"><span className="kw-title">{k.keyword}</span></div>
+                      </div>
+                      <div className="kw-right">
+                        <div className="kw-val">{k.weekly_search_volume.toLocaleString()}/wk</div>
+                        <ChangeTag ch={changes?.get(k.keyword)} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <SuggestedPosts title="AI Suggested Posts" sub="Post ideas generated from this week's search trends"
-              titles={t.titles} subLabel="From this week's internet trends"
-              onGenerate={(title) => onGenerate(title, t.prefill_prompt)} />
+                <SuggestedPosts title="AI Suggested Posts" sub="Post ideas generated from this week's search trends"
+                  titles={t.titles} subLabel="From this week's internet trends"
+                  onGenerate={(title) => onGenerate(title, t.prefill_prompt)} />
+              </>
+            )}
           </>
         );
       }}

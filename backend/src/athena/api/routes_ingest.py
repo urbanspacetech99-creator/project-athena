@@ -5,6 +5,9 @@ from athena.api.deps import get_session_factory, get_settings
 from athena.config import Settings
 from athena.ingestion.runner import IngestResult
 from athena.jobs import ingestion_jobs
+from athena.logging_setup import get_logger
+
+log = get_logger("athena.api.ingest")
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
 
@@ -55,5 +58,13 @@ def trigger_ingestion(source: str, factory=Depends(get_session_factory),
     `skipped: true`."""
     if source not in _JOBS:
         raise HTTPException(status_code=400, detail=f"unknown source: {source}")
-    res = _JOBS[source](factory, settings)
+    try:
+        res = _JOBS[source](factory, settings)
+    except Exception as exc:
+        # A whole-source failure is upstream's, not the caller's: 502 with the adapter's
+        # own message, so the Settings page names the cause ("zoho crm api error:
+        # INVALID_MODULE ...") instead of toasting a bare 500. Jobs that can partially
+        # succeed swallow per-item errors themselves and report them in `failed`.
+        log.exception("ingestion failed", extra={"source": source})
+        raise HTTPException(status_code=502, detail=f"{source} ingestion failed: {exc}") from exc
     return _to_response(source, res)

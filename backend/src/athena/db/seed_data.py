@@ -4,16 +4,22 @@ Source of brand content: Urban_Space_Brand_Guidelines_2026.pdf (Edition 02, May 
 Everything here is editable at runtime via /config/*; these are only the defaults.
 """
 
-# --- Competitors (external_id: FB page ID or IG username). FB page IDs are unknown
-# until Meta credentials exist -> empty string; live FB ingestion skips rows with an
-# empty external_id (with a warning log). IG usernames verified during implementation.
+# --- Competitors (external_id: FB page ID, IG username, or Google place_id). FB page IDs
+# are unknown until Meta credentials exist -> empty string; live FB ingestion skips rows
+# with an empty external_id (with a warning log). IG usernames verified during
+# implementation. Both rivals are chains with a dozen-plus Singapore listings and no
+# brand-level place; each google row therefore points at that chain's most-reviewed
+# outlet as its representative listing (resolved and verified 2026-08-07).
 COMPETITORS = [
     {"platform": "facebook", "name": "Extra Space Asia", "external_id": ""},
     {"platform": "facebook", "name": "StorHub", "external_id": ""},
     {"platform": "instagram", "name": "Extra Space Asia", "external_id": "extraspaceasia"},
     {"platform": "instagram", "name": "StorHub", "external_id": "storhub_sg"},
-    {"platform": "google", "name": "Extra Space Asia", "external_id": ""},
-    {"platform": "google", "name": "StorHub", "external_id": ""},
+    # Extra Space Eunos Link (489 reviews)
+    {"platform": "google", "name": "Extra Space Asia",
+     "external_id": "ChIJq6qqeu4X2jERcJuZmk-bjd0"},
+    # StorHub Toa Payoh (800 reviews)
+    {"platform": "google", "name": "StorHub", "external_id": "ChIJrTMxIW0Z2jERQO0Q1MX24Dk"},
 ]
 
 KEYWORDS = [
