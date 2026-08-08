@@ -41,6 +41,9 @@ class CompetitorPostOut(_ORM):
     like_count: int
     comment_count: int
     text: str
+    image_b64: str
+    permalink: str
+    is_video: bool
     window_date: datetime
 
 

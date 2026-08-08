@@ -49,7 +49,7 @@ export interface OwnPostRow { id: number; source_id: string; platform: string; t
 export interface PostCommentRow { id: number; source_id: string; post_source_id: string;
   text: string; window_date: string; }
 export interface CompetitorPostRow { id: number; source_id: string; competitor: string;
-  platform: string; text: string; like_count: number; comment_count: number; window_date: string; }
+  platform: string; text: string; like_count: number; comment_count: number; window_date: string; image_b64: string; permalink: string; is_video: boolean;}
 export interface CompetitorReviewRow { id: number; source_id: string; competitor: string;
   star_rating: number; comment: string; reviewer: string;
   place_rating: number; place_review_count: number; window_date: string; }

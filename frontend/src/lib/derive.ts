@@ -80,11 +80,13 @@ export interface CompetitorPlatformStat {
 export function competitorPlatformStats(
   posts: CompetitorPostRow[], platform: string,
 ): CompetitorPlatformStat {
-  const mine = newestFirst(posts.filter((p) => p.platform === platform));
+  const mine = posts.filter((p) => p.platform === platform);
+  const byEngagement = [...mine].sort((a, b) =>
+    (b.like_count + b.comment_count) - (a.like_count + a.comment_count));
   return {
     postsTracked: mine.length,
-    lastActive: mine.length ? mine[0].window_date : null,
+    lastActive: mine.length ? newestFirst(mine)[0].window_date : null,
     commentCount: mine.reduce((a, p) => a + (p.comment_count ?? 0), 0),
-    recent: mine.slice(0, 5),
+    recent: byEngagement.slice(0, 3),
   };
 }

@@ -47,6 +47,9 @@ class CompetitorPost(Base, _SourceRow):
     platform: Mapped[str] = mapped_column(String(32), default="facebook")
     like_count: Mapped[int] = mapped_column(Integer, default=0)
     comment_count: Mapped[int] = mapped_column(Integer, default=0)
+    image_b64: Mapped[str] = mapped_column(Text, default="")
+    permalink: Mapped[str] = mapped_column(String(512), default="")
+    is_video: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class CompetitorComment(Base, _SourceRow):

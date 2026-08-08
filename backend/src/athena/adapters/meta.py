@@ -222,7 +222,8 @@ class MetaIGCompetitorAdapter(SourceAdapter):
                                "queries go through our own IG business account)")
         fields = (f"business_discovery.username({self.username})"
                   "{username,media{caption,media_type,permalink,timestamp,"
-                  "like_count,comments_count}}")
+                  "like_count,comments_count,media_url,thumbnail_url,"
+                  "children{media_type,media_url,thumbnail_url}}}")
         with httpx.Client(base_url=GRAPH, timeout=30) as c:
             body = c.get(f"/{ig}", params={"fields": fields, "access_token": token}).json()
         return raise_on_error_envelope(body, "graph api")
@@ -232,9 +233,12 @@ class MetaIGCompetitorAdapter(SourceAdapter):
         name = bd.get("username") or self.competitor
         rows = []
         for m in (bd.get("media") or {}).get("data", []):
+            media_src, is_video = MetaOwnPostsAdapter._ig_image_src(m)
             rows.append({"source_id": m["id"], "competitor": name, "platform": "instagram",
                          "text": m.get("caption", ""),
                          "like_count": m.get("like_count", 0),
                          "comment_count": m.get("comments_count", 0),
+                         "image_b64": "", "_image_src": media_src,
+                         "permalink": m.get("permalink", ""), "is_video": is_video,
                          "window_date": _parse_ts(m["timestamp"])})
         return rows

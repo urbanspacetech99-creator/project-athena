@@ -35,11 +35,11 @@ def ingest_meta_posts(session_factory, settings: Settings) -> dict:
 
         existing_images = dict(session.query(OwnPost.source_id, OwnPost.image_b64)
                                .filter(OwnPost.source_id.in_(keep_ids)).all())
-        keep_rows = []
         for r in rows:
             image_src = r.pop("_image_src", "")
             if r["source_id"] not in keep_ids:
-                continue  # not a current top-3 post -- don't even store it
+                r["image_b64"] = ""  # not top-3 this run -- keep the post, drop/skip its image
+                continue
             if existing_images.get(r["source_id"]):
                 r["image_b64"] = existing_images[r["source_id"]]
             elif mode == "live":
@@ -47,10 +47,8 @@ def ingest_meta_posts(session_factory, settings: Settings) -> dict:
             else:
                 from athena.ai.images import PLACEHOLDER_PNG_B64
                 r["image_b64"] = PLACEHOLDER_PNG_B64
-            keep_rows.append(r)
 
-        p_ins, p_upd = upsert_rows(session, OwnPost, keep_rows, ("source_id", "window_date"))
-        session.query(OwnPost).filter(OwnPost.source_id.notin_(keep_ids)).delete(synchronize_session=False)
+        p_ins, p_upd = upsert_rows(session, OwnPost, rows, ("source_id", "window_date"))
         raw = adapter.fetch_comments_fixture() if mode == "fixture" else {"data": []}
         comment_rows = adapter.normalize_comments(raw)
         c_ins, c_upd = upsert_rows(session, PostComment, comment_rows, ("source_id",))
@@ -113,7 +111,7 @@ def ingest_competitor_posts(session_factory, settings: Settings) -> dict:
     empty external_id are skipped with a warning). Fixture: one run per platform — record-level
     attribution (from.name / business_discovery.username) labels the competitors. A failing
     competitor is logged and skipped; it never aborts the run."""
-    from athena.adapters.meta import MetaCompetitorAdapter, MetaIGCompetitorAdapter
+    from athena.adapters.meta import MetaCompetitorAdapter, MetaIGCompetitorAdapter, MetaOwnPostsAdapter
     from athena.db.models import CompetitorComment, CompetitorPost
 
     if settings.ingestion_skipped_for("meta"):
@@ -172,9 +170,27 @@ def ingest_competitor_posts(session_factory, settings: Settings) -> dict:
             try:
                 adapter = MetaIGCompetitorAdapter(mode=mode, competitor=comp.name,
                                                   username=comp.external_id, settings=settings)
-                res = run_ingestion(adapter, session, CompetitorPost, conflict=("source_id",))
-                p_ins += res.inserted
-                p_upd += res.updated
+                rows = adapter.fetch_normalized()
+                by_interactions = sorted(rows, key=lambda r: r["like_count"] + r["comment_count"],
+                                         reverse=True)
+                keep_ids = {r["source_id"] for r in by_interactions[:3]}
+                existing_images = dict(session.query(CompetitorPost.source_id, CompetitorPost.image_b64)
+                                       .filter(CompetitorPost.source_id.in_(keep_ids)).all())
+                for r in rows:
+                    image_src = r.pop("_image_src", "")
+                    if r["source_id"] not in keep_ids:
+                        r["image_b64"] = ""
+                        continue
+                    if existing_images.get(r["source_id"]):
+                        r["image_b64"] = existing_images[r["source_id"]]
+                    elif mode == "live":
+                        r["image_b64"] = MetaOwnPostsAdapter._download_image_b64(image_src)
+                    else:
+                        from athena.ai.images import PLACEHOLDER_PNG_B64
+                        r["image_b64"] = PLACEHOLDER_PNG_B64
+                res_ins, res_upd = upsert_rows(session, CompetitorPost, rows, ("source_id",))
+                p_ins += res_ins
+                p_upd += res_upd
             except Exception:
                 session.rollback()
                 failed.append(comp.name)

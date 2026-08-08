@@ -106,11 +106,14 @@ test("keywordChanges: dead 0-to-0 keyword is omitted, not NEW", () => {
 test("competitorPlatformStats aggregates one competitor's posts for a platform", () => {
   const posts: CompetitorPostRow[] = [
     { id: 1, source_id: "a", competitor: "X", platform: "facebook", text: "newest",
-      comment_count: 3, like_count: 10, window_date: "2026-07-10T00:00:00Z" },
+      comment_count: 3, like_count: 10, window_date: "2026-07-10T00:00:00Z",
+      image_b64: "", permalink: "", is_video: false },
     { id: 2, source_id: "b", competitor: "X", platform: "facebook", text: "older",
-      comment_count: 2, like_count: 5, window_date: "2026-07-01T00:00:00Z" },
+      comment_count: 2, like_count: 5, window_date: "2026-07-01T00:00:00Z",
+      image_b64: "", permalink: "", is_video: false },
     { id: 3, source_id: "c", competitor: "X", platform: "instagram", text: "ig",
-      comment_count: 9, like_count: 1, window_date: "2026-07-05T00:00:00Z" },
+      comment_count: 9, like_count: 1, window_date: "2026-07-05T00:00:00Z",
+      image_b64: "", permalink: "", is_video: false },
   ];
   const fb = competitorPlatformStats(posts, "facebook");
   expect(fb.postsTracked).toBe(2);

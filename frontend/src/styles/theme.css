@@ -223,9 +223,9 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .rank-stat{min-width:70px;justify-content:flex-end}
 .rank-row{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-top:1px solid #F4EEE6}
 .rank-num{font-size:11.5px;font-weight:700;color:var(--faint);width:14px}
-.rank-title{font-size:12px;font-weight:600;color:var(--text);display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.rank-title{display:block;font-size:12px;font-weight:600;color:var(--text);line-height:1.5}
 .rank-title-col{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
-.rank-tags{font-size:10.5px;color:var(--blue);font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rank-tags{font-size:10.5px;color:var(--blue);font-weight:700;line-height:1.4;display:flex;flex-wrap:wrap;gap:4px}
 .rank-stat{font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:3px}
 .rank-link{font-size:10.5px;color:var(--blue);font-weight:700;margin-top:4px;display:inline-block}
 
@@ -246,26 +246,30 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .comp-selected-banner{background:var(--blue-l);border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:10px}
 .comp-selected-avatar{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .comp-selected-name{font-size:13.5px;font-weight:800;color:var(--blue-d)}
-.comp-3grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.comp-3grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start}
 .comp-block{padding:16px 16px 4px}
 .comp-num-lbl{font-size:14.5px;font-weight:800;color:var(--text)}
 .comp-num-val{font-size:26px;font-weight:800;color:var(--text);line-height:1.2;margin-top:2px}
 .comp-last-active{font-size:11.5px;color:var(--muted);margin-top:4px}
 .comp-sec-title{font-size:14.5px;font-weight:800;color:var(--text);padding:14px 16px 6px}
 .comp-sec-title{font-size:14.5px;font-weight:800;color:var(--text);padding:14px 16px 6px}
-.comp-recent-list{max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:12px;background:#fff;margin:0 16px 16px}
-.comp-post-item{padding:12px 16px;border-top:1px solid #F1E9DF;}
+.comp-post-item{display:flex;gap:6px;padding:10px 12px;border-top:1px solid #F1E9DF;align-items:flex-start}
 .comp-post-item:first-child{border-top:none}
-.comp-post-title{font-size:12.5px;color:var(--text);font-weight:600;line-height:1.5}
-.comp-post-tags{margin-top:7px;color:var(--ora-d);font-weight:700;font-size:11.5px}
+.comp-post-media{display:flex;flex-direction:column;align-items:flex-start;gap:6px;flex-shrink:0;width:96px}
+.comp-post-thumb-wrap{position:relative;width:96px;height:96px}
+.comp-post-thumb{width:96px;height:96px;border-radius:8px;object-fit:cover;background:var(--border);cursor:zoom-in}
+.comp-post-num{position:absolute;top:-4px;left:-4px;width:16px;height:16px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--faint)}
+.comp-post-stats{display:flex;gap:10px}
+.comp-post-stat{font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:3px}
+.comp-post-body{flex:1;min-width:0}
+.comp-post-caption{font-size:11.5px;line-height:1.4;color:var(--text);margin:0}
+.comp-post-tags{margin-top:4px;color:var(--blue);font-weight:700;font-size:10.5px}
+.comp-post-link{font-size:10.5px;color:var(--blue);font-weight:700;margin-top:4px;display:block}
 .comp-eng-row{display:flex;gap:22px;padding:12px 16px;border-bottom:1px solid var(--border)}
 .comp-eng-stat{font-size:11.5px;color:var(--muted)}
 .comp-eng-stat b{color:var(--text);font-size:13px;font-weight:800;display:block}
 .comp-section-lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);padding:10px 16px 4px}
 /* Live captions are long multi-line text — separate rows like .cm-item/.comp-rev and clamp to 3 lines */
-.comp-post-title::after{content:"";position:absolute;bottom:0;left:0;right:0;height:22px;background:linear-gradient(to bottom, rgba(255,255,255,0), #fff 65%)}
-.comp-post-tags{margin-top:6px;padding-top:6px;border-top:1px dashed #E8DED0;color:var(--blue);font-weight:600;font-size:11px}
-.comp-sec-title+.comp-post-title{border-top:none}
 .comp-rev{padding:8px 16px;border-top:1px solid #F4EEE6}
 .comp-rev:first-child{border-top:none}
 
