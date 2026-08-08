@@ -30,6 +30,7 @@ export const ICO = {
   thumbUp:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v10H4a1 1 0 01-1-1v-8a1 1 0 011-1h3z"/><path d="M7 11l4.5-8a2 2 0 013.5 1.3L14 9h5.5a2 2 0 011.9 2.6l-2.4 8A2 2 0 0117 21H10a3 3 0 01-3-3"/></svg>',
   share:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 10.7L15.3 7.3M8.7 13.3l6.6 3.4"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg>',
   send:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>',
+  play:'<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4l15 8-15 8V4z"/></svg>',
   bookmark:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z"/></svg>',
 } as const;
 

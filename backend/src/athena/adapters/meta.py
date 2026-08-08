@@ -1,5 +1,7 @@
 # Field lists verified against Graph API v25.0 docs on 2026-07-12.
+import base64
 import json
+from athena.logging_setup import get_logger
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,7 +13,7 @@ from athena.config import Settings
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 GRAPH = "https://graph.facebook.com/v25.0"
-
+log = get_logger("athena.adapters.meta")
 
 def _parse_ts(ts: str) -> datetime:
     return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S%z")
@@ -41,12 +43,14 @@ class MetaOwnPostsAdapter(SourceAdapter):
         ig = getattr(s, "meta_ig_user_id", "") or ""
         with httpx.Client(base_url=GRAPH, timeout=30) as c:
             fb_posts = raise_on_error_envelope(c.get(f"/{page}/posts", params={
-                "fields": "message,created_time,permalink_url,shares,"
+                "fields": "message,created_time,permalink_url,shares,full_picture,"
+                          "attachments{media_type},"
                           "reactions.summary(true),comments.summary(true)",
                 "access_token": token}).json(), "graph api")
             ig_media = raise_on_error_envelope(c.get(f"/{ig}/media", params={
                 "fields": "caption,media_type,media_product_type,timestamp,permalink,"
-                          "username,like_count,comments_count",
+                          "username,like_count,comments_count,media_url,thumbnail_url,"
+                          "children{media_type,media_url,thumbnail_url}",
                 "access_token": token}).json(), "graph api")
             ig_insights = {}
             for m in ig_media.get("data", []):
@@ -55,25 +59,63 @@ class MetaOwnPostsAdapter(SourceAdapter):
                     "access_token": token}).json(), "graph api")
         return {"fb_posts": fb_posts, "ig_media": ig_media, "ig_insights": ig_insights}
 
+    @staticmethod
+    def _download_image_b64(url: str) -> str:
+        """Best-effort image download. Meta's media URLs are signed and expire in
+        roughly a day, so we pull the bytes once at ingestion time and store our own
+        copy rather than depending on a URL that won't still work next week."""
+        if not url:
+            return ""
+        try:
+            resp = httpx.get(url, timeout=15)
+            resp.raise_for_status()
+            return base64.b64encode(resp.content).decode()
+        except Exception:
+            log.warning("post image download failed", extra={"url": url})
+            return ""
+
+    @staticmethod
+    def _ig_image_src(m: dict) -> tuple[str, bool]:
+        """Returns (image_url, is_video). Carousel posts don't expose media_url at the
+        top level at all — Instagram requires reading the first child item instead."""
+        media_type = m.get("media_type", "")
+        if media_type == "CAROUSEL_ALBUM":
+            children = (m.get("children") or {}).get("data", [])
+            if children:
+                m = children[0]
+                media_type = m.get("media_type", "")
+        is_video = media_type == "VIDEO"
+        return (m.get("thumbnail_url", "") if is_video else m.get("media_url", "")), is_video
+
     def normalize(self, raw) -> list[dict]:
+        #from athena.ai.images import PLACEHOLDER_PNG_B64
         rows: list[dict] = []
         for p in raw["fb_posts"].get("data", []):
             likes = p.get("reactions", {}).get("summary", {}).get("total_count", 0)
             comments = p.get("comments", {}).get("summary", {}).get("total_count", 0)
             shares = p.get("shares", {}).get("count", 0)
+            #image_b64 = (self._download_image_b64(p.get("full_picture", ""))
+                         #if self.mode == "live" else PLACEHOLDER_PNG_B64)
+            attachments = (p.get("attachments") or {}).get("data") or [{}]
+            is_video = attachments[0].get("media_type") == "video"
             rows.append({"source_id": p["id"], "platform": "facebook", "title": "",
                          "content": p.get("message", ""), "views": 0,
                          "likes": likes, "interactions": likes + shares + comments,
+                         "image_b64": "", "_image_src": p.get("full_picture", ""),
+                         "permalink": p.get("permalink_url", ""), "is_video": is_video,
                          "window_date": _parse_ts(p["created_time"])})
         insights_by_id = raw.get("ig_insights", {})
         for m in raw["ig_media"].get("data", []):
             ins = {d["name"]: d["values"][0]["value"]
                    for d in insights_by_id.get(m["id"], {}).get("data", [])}
+            media_src, is_video = self._ig_image_src(m)
             rows.append({"source_id": m["id"], "platform": "instagram", "title": "",
                          "content": m.get("caption", ""), "views": ins.get("views", 0),
                          "likes": ins.get("likes", m.get("like_count", 0)),
                          "interactions": ins.get("total_interactions",
                                                  m.get("like_count", 0) + m.get("comments_count", 0)),
+                         "image_b64": "", "_image_src": media_src,
+                         "permalink": m.get("permalink", ""), "is_video": is_video,
                          "window_date": _parse_ts(m["timestamp"])})
         return rows
 

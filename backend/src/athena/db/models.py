@@ -27,6 +27,9 @@ class OwnPost(Base, _SourceRow):
     views: Mapped[int] = mapped_column(Integer, default=0)
     likes: Mapped[int] = mapped_column(Integer, default=0)
     interactions: Mapped[int] = mapped_column(Integer, default=0)
+    image_b64: Mapped[str] = mapped_column(Text, default="")
+    permalink: Mapped[str] = mapped_column(String(512), default="")
+    is_video: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class PostComment(Base, _SourceRow):

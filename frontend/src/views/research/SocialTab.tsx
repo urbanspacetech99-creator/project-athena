@@ -1,5 +1,4 @@
 import { api } from "../../lib/api";
-import { ASSET } from "../../assets";
 import { AiCard } from "../../components/AiCard";
 import { AsyncSection } from "../../components/AsyncSection";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -12,7 +11,6 @@ import { fmt } from "../../lib/fmt";
 import { RankRows } from "./RankRows";
 
 export function SocialTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
-  // own_posts window_date is the post's publish date (stable across re-ingests), so rows never duplicate per week — no dedupe needed, unlike keyword volumes.
   const social = useCachedApi(CACHE_KEYS.socialReviews, api.socialReviews);
   const posts = useApi(api.ownPosts);
   const comments = useApi(api.postComments);
@@ -29,47 +27,64 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
   const fb = top("facebook");
   const ig = top("instagram");
 
+  const postsById = new Map((posts.data?.items ?? []).map((p) => [p.source_id, p]));
+  const commentsFor = (platform: string) =>
+    (comments.data?.items ?? []).filter((c) => postsById.get(c.post_source_id)?.platform === platform);
+
   return (
     <>
-      <div className="ct-title" style={{ marginBottom: 2 }}>Engagement <StatusBadge kind="data" source="meta" /></div>
+      <div className="ct-title" style={{ marginBottom: 2 }}>Top performing this week <StatusBadge kind="data" source="meta" /></div>
       <div className="ct-sub" style={{ marginBottom: 14 }}>
-        Views and likes of your posts this week{social.data ? ` · ${fmt(social.data.views)} total weekly views` : ""}.
+        Your highest-engagement posts, ranked{social.data ? ` · ${fmt(social.data.views)} total weekly views` : ""}.
       </div>
-      <div className="soc-grid" style={{ marginBottom: 20 }}>
-        <div className="soc-card">
-          <div className="soc-hdr" style={{ background: "#3E6FB0" }}>
-            <span>Facebook</span><small>{posts.data ? `${fb.length} posts` : "…"}</small>
+      <div className="cm-grid" style={{ marginBottom: 20 }}>
+        <div className="cm-card">
+          <div className="cm-hdr" style={{ background: "#3E6FB0" }}>
+            <span>Facebook</span><small>Top 3</small>
             <StatusBadge kind="data" source="meta" light />
           </div>
-          <div className="soc-preview-wrap" style={{ background: "#3E6FB0" }}>
-            <img className="soc-preview-img" src={ASSET.FB_PREVIEW} alt="Facebook page preview" />
+          <div className="cm-body" style={{ maxHeight: "none", overflowY: "visible" }}>
+            <AsyncSection q={posts}>{() => <RankRows posts={fb} comments={comments.data?.items ?? []} />}</AsyncSection>
           </div>
-          <AsyncSection q={posts}>{() => <RankRows posts={fb} />}</AsyncSection>
         </div>
-        <div className="soc-card">
-          <div className="soc-hdr" style={{ background: "#C0392B" }}>
-            <span>Instagram</span><small>{posts.data ? `${ig.length} posts` : "…"}</small>
+        <div className="cm-card">
+          <div className="cm-hdr" style={{ background: "#C0392B" }}>
+            <span>Instagram</span><small>Top 3</small>
             <StatusBadge kind="data" source="meta" light />
           </div>
-          <div className="soc-preview-wrap" style={{ background: "#C0392B" }}>
-            <img className="soc-preview-img" src={ASSET.IG_PREVIEW} alt="Instagram profile preview" />
+          <div className="cm-body" style={{ maxHeight: "none", overflowY: "visible" }}>
+            <AsyncSection q={posts}>{() => <RankRows posts={ig} comments={comments.data?.items ?? []} />}</AsyncSection>
           </div>
-          <AsyncSection q={posts}>{() => <RankRows posts={ig} />}</AsyncSection>
         </div>
       </div>
       <div className="ct-title" style={{ marginBottom: 2 }}>Comments &amp; Reviews</div>
       <div className="ct-sub" style={{ marginBottom: 14 }}>Recent comments on your posts and Google reviews</div>
-      <div className="cm-grid" style={{ marginBottom: 20 }}>
+      <div className="cm-grid" style={{ marginBottom: 20, gridTemplateColumns: "1fr 1fr 1fr" }}>
         <div className="cm-card">
           <div className="cm-hdr" style={{ background: "#3E6FB0" }}>
-            <span>Post comments</span><small>{comments.data?.count ?? "…"} total</small>
+            <span>Facebook comments</span><small>{posts.data ? commentsFor("facebook").length : "…"}</small>
             <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="cm-body">
             <AsyncSection q={comments}>
-              {(c) => c.items.length === 0
+              {() => commentsFor("facebook").length === 0
                 ? <div className="empty-note">No comments yet.</div>
-                : newestFirst(c.items).slice(0, 8).map((cm) => (
+                : newestFirst(commentsFor("facebook")).slice(0, 8).map((cm) => (
+                    <div className="cm-item" key={cm.id}><div className="cm-txt">{cm.text}</div></div>
+                  ))}
+            </AsyncSection>
+          </div>
+        </div>
+        <div className="cm-card">
+          <div className="cm-hdr" style={{ background: "#C0392B" }}>
+            <span>Instagram comments</span><small>{posts.data ? commentsFor("instagram").length : "…"}</small>
+            <StatusBadge kind="data" source="meta" light />
+          </div>
+          <div className="cm-body">
+            <AsyncSection q={comments}>
+              {() => commentsFor("instagram").length === 0
+                ? <div className="empty-note">No comments yet.</div>
+                : newestFirst(commentsFor("instagram")).slice(0, 8).map((cm) => (
                     <div className="cm-item" key={cm.id}><div className="cm-txt">{cm.text}</div></div>
                   ))}
             </AsyncSection>
@@ -83,7 +98,6 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
               return (
                 <>
                   <div className="cm-hdr" style={{ background: "#2F7A3D" }}>
-                    {/* avg and count both describe the fetched tail window; r.count is all-time and only used when there is nothing to average */}
                     <span>Google</span><small>{avg ? `★${avg} · ${r.items.length}` : `${r.count} reviews`}</small>
                     <StatusBadge kind="data" source="google_reviews" light />
                   </div>

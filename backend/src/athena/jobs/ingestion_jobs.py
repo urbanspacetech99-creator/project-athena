@@ -24,13 +24,39 @@ def ingest_meta_posts(session_factory, settings: Settings) -> dict:
     adapter = MetaOwnPostsAdapter(mode=mode, settings=settings)
     session = session_factory()
     try:
-        posts = run_ingestion(adapter, session, OwnPost, conflict=("source_id", "window_date"))
-        # comments: use the adapter's comment stream (fixture) -> upsert PostComment
+        rows = adapter.fetch_normalized()
+        by_platform: dict[str, list[dict]] = {}
+        for r in rows:
+            by_platform.setdefault(r["platform"], []).append(r)
+        keep_ids: set[str] = set()
+        for plat_rows in by_platform.values():
+            by_interactions = sorted(plat_rows, key=lambda r: r["interactions"], reverse=True)
+            keep_ids.update(r["source_id"] for r in by_interactions[:3])
+
+        existing_images = dict(session.query(OwnPost.source_id, OwnPost.image_b64)
+                               .filter(OwnPost.source_id.in_(keep_ids)).all())
+        keep_rows = []
+        for r in rows:
+            image_src = r.pop("_image_src", "")
+            if r["source_id"] not in keep_ids:
+                continue  # not a current top-3 post -- don't even store it
+            if existing_images.get(r["source_id"]):
+                r["image_b64"] = existing_images[r["source_id"]]
+            elif mode == "live":
+                r["image_b64"] = adapter._download_image_b64(image_src)
+            else:
+                from athena.ai.images import PLACEHOLDER_PNG_B64
+                r["image_b64"] = PLACEHOLDER_PNG_B64
+            keep_rows.append(r)
+
+        p_ins, p_upd = upsert_rows(session, OwnPost, keep_rows, ("source_id", "window_date"))
+        session.query(OwnPost).filter(OwnPost.source_id.notin_(keep_ids)).delete(synchronize_session=False)
         raw = adapter.fetch_comments_fixture() if mode == "fixture" else {"data": []}
         comment_rows = adapter.normalize_comments(raw)
-        ci, cu = upsert_rows(session, PostComment, comment_rows, ("source_id",))
+        c_ins, c_upd = upsert_rows(session, PostComment, comment_rows, ("source_id",))
         session.commit()
-        return {"posts": posts, "comments": IngestResult("meta", ci, cu)}
+        return {"posts": IngestResult("meta", p_ins, p_upd),
+                "comments": IngestResult("meta", c_ins, c_upd)}
     finally:
         session.close()
 

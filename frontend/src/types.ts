@@ -44,7 +44,8 @@ export interface SkillDef { id: number; key: string; name: string; content: stri
 export interface EffectivePrompt { key: string; effective_prompt: string; }
 
 export interface OwnPostRow { id: number; source_id: string; platform: string; title: string;
-  content: string; views: number; likes: number; interactions: number; window_date: string; }
+  content: string; views: number; likes: number; interactions: number; image_b64: string;
+  permalink: string; is_video: boolean; window_date: string; }
 export interface PostCommentRow { id: number; source_id: string; post_source_id: string;
   text: string; window_date: string; }
 export interface CompetitorPostRow { id: number; source_id: string; competitor: string;

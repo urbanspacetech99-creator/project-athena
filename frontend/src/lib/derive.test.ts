@@ -7,7 +7,8 @@ import type { CompetitorPostRow, KeywordVolumeRow, OwnPostRow } from "../types";
 
 const own = (o: Partial<OwnPostRow>): OwnPostRow => ({
   id: 1, source_id: "s", platform: "instagram", title: "", content: "",
-  views: 0, likes: 0, interactions: 0, window_date: "2026-07-01T00:00:00Z", ...o,
+  views: 0, likes: 0, interactions: 0, image_b64: "", permalink: "", is_video: false,
+  window_date: "2026-07-01T00:00:00Z", ...o,
 });
 const kw = (o: Partial<KeywordVolumeRow>): KeywordVolumeRow => ({
   id: 1, source_id: "s", keyword: "k", weekly_search_volume: 0,

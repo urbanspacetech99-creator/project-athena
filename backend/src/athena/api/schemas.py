@@ -19,6 +19,9 @@ class OwnPostOut(_ORM):
     views: int
     likes: int
     interactions: int
+    image_b64: str
+    permalink: str
+    is_video: bool
     window_date: datetime
 
 
