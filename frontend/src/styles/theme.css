@@ -88,7 +88,7 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .card-hdr-row{display:flex;align-items:center;gap:10px;margin-bottom:2px}
 .card-ico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .card-title{font-size:18px;font-weight:800;color:var(--text)}
-.card-sub{font-size:11.5px;color:var(--muted)}
+.card-sub{font-size:12.5px;color:var(--muted)}
 
 .kpi-list{display:flex;flex-direction:column;gap:10px;margin-top:14px}
 .ktile{border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
@@ -107,7 +107,7 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .ai-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .ai-card-title-row{display:flex;align-items:center;gap:10px}
 .ai-star-ico{width:34px;height:34px;border-radius:11px;background:var(--ai);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.tag-pill{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:20px;padding:5px 12px;white-space:nowrap}
+.tag-pill{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:20px;padding:5px 12px;white-space:nowrap}
 .tag-pill.red{background:var(--ai);color:#fff}
 .notif-row{display:flex;align-items:flex-start;gap:11px;padding:12px 0;border-top:1px solid #F2E5DE}
 .notif-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
@@ -178,14 +178,17 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .sugg-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid #F6E3DD}
 .sugg-row:first-child{border-top:none}
 .sugg-num{width:24px;height:24px;border-radius:7px;background:var(--ai-l);color:var(--ai-d);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.sugg-title{font-size:13px;font-weight:700;color:var(--text)}
-.sugg-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.sugg-title{font-size:14px;font-weight:700;color:var(--text)}
+.sugg-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
 
 .insight-row{padding:14px 0;border-top:1px solid #F6E3DD;display:flex;gap:12px}
 .insight-row:first-child{border-top:none}
 .insight-ico{width:30px;height:30px;border-radius:9px;background:var(--ai-l);color:var(--ai-d);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.insight-title{font-size:13.5px;font-weight:800;color:var(--text)}
-.insight-body{font-size:12px;color:var(--muted);line-height:1.6;margin-top:4px}
+.insight-title{font-size:14.5px;font-weight:800;color:var(--text)}
+.insight-body{font-size:14px;color:var(--muted);line-height:1.6;margin-top:4px}
+.insight-list{font-size:14px;color:var(--muted);line-height:1.6;margin:4px 0 0;padding-left:18px}
+.insight-list li{margin-bottom:6px}
+.insight-list li:last-child{margin-bottom:0}
 
 /* customer chats */
 .gold-card{background:linear-gradient(135deg,#FBE7B8,#F7DA98);border-radius:16px;padding:22px}

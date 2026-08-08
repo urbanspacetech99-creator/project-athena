@@ -125,7 +125,11 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
               <div className="insight-row" style={{ borderTop: "1px solid #F6E3DD" }}>
                 <div style={{ flex: 1 }}>
                   <div className="insight-title">Review summary</div>
-                  <div className="insight-body">{s.insights.review_summary}</div>
+                  <ul className="insight-list">
+                    {s.insights.review_summary.split(/(?<=[.!?])\s+/).filter(Boolean).map((point, i) => (
+                      <li key={i}>{point}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
