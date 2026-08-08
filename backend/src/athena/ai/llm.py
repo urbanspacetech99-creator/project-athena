@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from athena.ai.schemas import (AggregatedRecommendations, CommentInsights, CompetitorInsights,
                                 CustomerInsights, ImagePromptSpec, PostCaption, Recommendation,
-                                SocialReviewInsights, TitleSuggestions)
+                                SocialReviewInsights, TitleSuggestion, TitleSuggestions)
 from athena.config import Settings
 from athena.logging_setup import get_logger
 
@@ -49,11 +49,18 @@ class FakeLLM:
 
 def default_fake_llm() -> FakeLLM:
     """App-level fake with UrbanSpace-plausible outputs so keyless demos read coherently."""
-    titles = ["Storage from S$60/mo at Bukit Merah",
-              "Hot desks from S$28/day — skip the lease",
-              "Valet Storage: we pack, we move, you don't lift",
-              "Same-day fulfilment for your online store",
-              "Month-to-month units, 24/7 access"]
+    titles = [
+        TitleSuggestion(title="Storage from S$60/mo at Bukit Merah", confidence=5,
+            confidence_reason="Directly matches current promo pricing and location data."),
+        TitleSuggestion(title="Hot desks from S$28/day — skip the lease", confidence=4,
+            confidence_reason="Grounded in Workspace pricing, though demand signal is thinner."),
+        TitleSuggestion(title="Valet Storage: we pack, we move, you don't lift", confidence=4,
+            confidence_reason="Reflects a real differentiator, but limited engagement data to confirm appeal."),
+        TitleSuggestion(title="Same-day fulfilment for your online store", confidence=3,
+            confidence_reason="Plausible angle, but little direct customer signal behind it yet."),
+        TitleSuggestion(title="Month-to-month units, 24/7 access", confidence=5,
+            confidence_reason="Core value prop repeated consistently across reviews and chats."),
+    ]
     prefill = ("Instagram post about UrbanSpace self storage at Bukit Merah: from S$60/mo, "
                "month-to-month, 24/7 access, book online in three minutes.")
     return FakeLLM({
@@ -74,9 +81,13 @@ def default_fake_llm() -> FakeLLM:
             activity_summary="Competitors post promo-led storage content with vague pricing.",
             recommendations=[
                 Recommendation(title="Publish transparent pricing",
-                               detail="Their posts and reviews show customers frustrated by hidden prices."),
+                               detail="Their posts and reviews show customers frustrated by hidden prices.",
+                               confidence=5,
+                               confidence_reason="Directly backed by multiple competitor reviews naming this complaint."),
                 Recommendation(title="Lead with all-four-services convenience",
-                               detail="No competitor offers storage, workspace, fulfilment and valet under one roof.")]),
+                               detail="No competitor offers storage, workspace, fulfilment and valet under one roof.",
+                               confidence=4,
+                               confidence_reason="True from tracked data, though customer demand for the combo isn't directly measured.")]),
         PostCaption: PostCaption(
             caption=("From S$60/month at Bukit Merah. Month-to-month, 24/7 access. "
                      "Book online in three minutes."),

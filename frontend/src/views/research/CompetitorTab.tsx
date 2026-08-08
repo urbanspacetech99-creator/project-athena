@@ -8,6 +8,7 @@ import { useApi, useCachedApi } from "../../hooks/useApi";
 import { CACHE_KEYS } from "../../lib/cacheKeys";
 import { competitorPlatformStats, newestFirst } from "../../lib/derive";
 import { PlatformCard } from "./PlatformCard";
+import { ConfidenceBadge } from "../../components/ConfidenceBadge";
 
 export function CompetitorTab({ onGenerate }: { onGenerate: (title: string, context: string) => void }) {
   const competitors = useApi(api.listCompetitors);
@@ -114,6 +115,7 @@ export function CompetitorTab({ onGenerate }: { onGenerate: (title: string, cont
                     <div className="insight-title">{r.title}</div>
                     <div className="insight-body">{r.detail}</div>
                   </div>
+                  <ConfidenceBadge confidence={r.confidence} reason={r.confidence_reason} />
                 </div>
               ))}
             </AiCard>

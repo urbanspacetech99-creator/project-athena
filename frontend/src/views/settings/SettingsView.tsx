@@ -2,6 +2,7 @@ import { useApi } from "../../hooks/useApi";
 import { api } from "../../lib/api";
 import { AgentsSection } from "./AgentsSection";
 import { CompetitorsSection } from "./CompetitorsSection";
+import { ConfidenceGuideSection } from "./ConfidenceGuideSection";
 import { DataSourcesSection } from "./DataSourcesSection";
 import { KeywordsSection } from "./KeywordsSection";
 import { SkillsSection } from "./SkillsSection";
@@ -22,6 +23,7 @@ export function SettingsView() {
       <KeywordsSection />
       <AgentsSection agents={agents} skills={skills} />
       <SkillsSection skills={skills} agents={agents} />
+      <ConfidenceGuideSection />
     </div>
   );
 }

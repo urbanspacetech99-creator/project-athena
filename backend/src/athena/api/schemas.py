@@ -127,10 +127,22 @@ class KeywordOut(BaseModel):
     weekly_search_volume: int
 
 
+class TitleSuggestionOut(BaseModel):
+    title: str
+    confidence: int
+    confidence_reason: str
+
+
 class TrendsOut(BaseModel):
     keywords: list[KeywordOut]
-    titles: list[str]
+    titles: list[TitleSuggestionOut]
     prefill_prompt: str
+
+
+class TitleSuggestionOut(BaseModel):
+    title: str
+    confidence: int
+    confidence_reason: str
 
 
 class QuestionsOut(BaseModel):
@@ -146,7 +158,7 @@ class CustomerInsightsOut(BaseModel):
 
 class CustomerInsightsResponse(BaseModel):
     insights: CustomerInsightsOut
-    titles: list[str]
+    titles: list[TitleSuggestionOut]
     prefill_prompt: str
 
 
@@ -158,13 +170,17 @@ class SocialReviewOut(BaseModel):
 class SocialResponse(BaseModel):
     views: int
     insights: SocialReviewOut
-    titles: list[str]
+    titles: list[TitleSuggestionOut]
     prefill_prompt: str
 
 
 class CompetitorRecommendationOut(BaseModel):
     title: str
     detail: str
+    confidence: int
+    confidence_reason: str
+    confidence: int
+    confidence_reason: str
 
 
 class CompetitorOut(BaseModel):
@@ -174,7 +190,7 @@ class CompetitorOut(BaseModel):
 
 class CompetitorResponse(BaseModel):
     insights: CompetitorOut
-    titles: list[str]
+    titles: list[TitleSuggestionOut]
     prefill_prompt: str
 
 
@@ -232,7 +248,7 @@ class DraftOut(_ORM):
 
 
 class RecommendationsOut(BaseModel):
-    titles: list[str]
+    titles: list[TitleSuggestionOut]
     prefill_prompt: str
     rationale: str
 

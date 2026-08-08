@@ -7,19 +7,20 @@ export interface CommentInsights { summary: string; themes: string[]; sentiment:
   recurring_feedback: string[]; }
 export interface EngagementSummary { top_post: TopPost | null; insights: CommentInsights; }
 
+export interface TitleSuggestion { title: string; confidence: number; confidence_reason: string; }
 export interface Keyword { keyword: string; weekly_search_volume: number; }
-export interface Trends { keywords: Keyword[]; titles: string[]; prefill_prompt: string; }
+export interface Trends { keywords: Keyword[]; titles: TitleSuggestion[]; prefill_prompt: string; }
 export interface Questions { questions: string[]; }
 export interface CustomerInsights { top_services: string[]; top_features: string[];
   top_promotions: string[]; summary: string; }
-export interface CustomerInsightsResponse { insights: CustomerInsights; titles: string[];
+export interface CustomerInsightsResponse { insights: CustomerInsights; titles: TitleSuggestion[];
   prefill_prompt: string; }
 export interface SocialReview { comment_topics: string[]; review_summary: string; }
-export interface SocialResponse { views: number; insights: SocialReview; titles: string[];
+export interface SocialResponse { views: number; insights: SocialReview; titles: TitleSuggestion[];
   prefill_prompt: string; }
-export interface Recommendation { title: string; detail: string; }
+export interface Recommendation { title: string; detail: string; confidence: number; confidence_reason: string; }
 export interface Competitor { activity_summary: string; recommendations: Recommendation[]; }
-export interface CompetitorResponse { insights: Competitor; titles: string[]; prefill_prompt: string; }
+export interface CompetitorResponse { insights: Competitor; titles: TitleSuggestion[]; prefill_prompt: string; }
 
 export interface PostOption { caption: string; hashtags: string[]; image_b64: string;
   mime_type: string; canva_edit_url: string; canva_design_id: string; visual_style: string;
@@ -32,7 +33,7 @@ export interface GeneratePostIn {
 }
 export interface Draft { id: number; platform: string; caption: string; image_b64: string;
   canva_edit_url: string; created_at: string; canva_design_id: string;}
-export interface Recommendations { titles: string[]; prefill_prompt: string; rationale: string; }
+export interface Recommendations { titles: TitleSuggestion[]; prefill_prompt: string; rationale: string; }
 
 export interface CompetitorRow { id: number; platform: "facebook" | "instagram" | "google"; name: string;
   external_id: string; enabled: boolean; created_at: string; updated_at: string; }

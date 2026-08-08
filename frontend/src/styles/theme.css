@@ -382,3 +382,15 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .skill-pill-empty{border-color:var(--border);color:var(--faint);background:transparent}
 .skill-preview{font-size:11px;color:var(--muted)}
 .skill-hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+.conf-badge{display:inline-flex;align-items:center;gap:4px;flex-shrink:0}
+.conf-num{width:20px;height:20px;border-radius:50%;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.conf-info-wrap{position:relative;display:inline-flex}
+.conf-info-dot{width:16px;height:16px;border-radius:50%;background:transparent;border:1.5px solid var(--muted);color:var(--muted);font-size:10px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center;cursor:default;flex-shrink:0}
+.conf-tooltip{position:absolute;bottom:calc(100% + 8px);right:-6px;width:220px;background:#1A1410;color:#fff;font-size:11.5px;font-weight:500;line-height:1.5;padding:10px 12px;border-radius:8px;box-shadow:0 6px 20px #00000030;opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .1s ease,transform .1s ease;pointer-events:none;z-index:20;text-align:left}
+.conf-tooltip::after{content:"";position:absolute;top:100%;right:12px;border:5px solid transparent;border-top-color:#1A1410}
+.conf-info-wrap:hover .conf-tooltip{opacity:1;visibility:visible;transform:translateY(0)}
+.conf-guide-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.conf-guide-row:first-child{border-top:none}
+.conf-guide-label{font-size:12.5px;font-weight:700;color:var(--text)}
+.conf-guide-desc{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.5}

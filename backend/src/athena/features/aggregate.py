@@ -100,7 +100,7 @@ def aggregated_recommendations_stream(session: Session, llm: LLMClient):
     if rec is None:
         raise RuntimeError("aggregator stream ended without a synthesis result")
     yield {"event": "result",
-           "data": {"titles": rec.titles, "prefill_prompt": rec.prefill_prompt,
+           "data": {"titles": [t.model_dump() for t in rec.titles], "prefill_prompt": rec.prefill_prompt,
                     "rationale": rec.rationale}}
 
 

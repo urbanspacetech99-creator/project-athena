@@ -6,7 +6,10 @@ import { SuggestedPosts } from "./SuggestedPosts";
 test("renders numbered titles and fires onGenerate with the title", async () => {
   const onGenerate = vi.fn();
   render(<SuggestedPosts title="AI Suggested Posts" sub="From trends"
-    titles={["Post idea one", "Post idea two"]} subLabel="From this week's internet trends"
+    titles={[
+      { title: "Post idea one", confidence: 4, confidence_reason: "Grounded in current trend data." },
+      { title: "Post idea two", confidence: 3, confidence_reason: "Plausible but less directly supported." },
+    ]} subLabel="From this week's internet trends"
     onGenerate={onGenerate} />);
   expect(screen.getByText("Post idea one")).toBeInTheDocument();
   expect(screen.getByText("2")).toBeInTheDocument();
