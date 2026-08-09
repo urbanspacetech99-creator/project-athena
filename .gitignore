@@ -1,4 +1,6 @@
-docs/superpowers/
+docs/draft
+docs/specs
+docs/superpowers
 .env
 .venv/
 __pycache__/
