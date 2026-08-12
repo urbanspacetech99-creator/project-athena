@@ -9,9 +9,6 @@ __pycache__/
 # built deploy image tarballs (move manually; don't commit)
 deploy/*.tar
 
-# knowledge-graph dashboard UI (rebuildable; the graph itself is committed)
-.understand-anything/dashboard/
-
 # frontends (marketing dashboard + dev console)
 frontend/node_modules/
 frontend/dist/
