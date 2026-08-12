@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Ico } from "../../components/Ico";
 import { splitHashtags } from "../../lib/splitHashtags";
 import { PLACEHOLDER_PNG_B64 } from "../../providers/GenerateProvider";
-import type { OwnPostRow, PostCommentRow } from "../../types";
+import type { OwnPostRow } from "../../types";
 
-export function RankRows({ posts, comments }: { posts: OwnPostRow[]; comments: PostCommentRow[] }) {
+export function RankRows({ posts }: { posts: OwnPostRow[] }) {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   if (posts.length === 0) return <div className="empty-note">No posts ingested yet.</div>;
   return (
@@ -12,7 +12,6 @@ export function RankRows({ posts, comments }: { posts: OwnPostRow[]; comments: P
       <div className="rank-header">Ranking</div>
       {posts.map((p, i) => {
         const { caption, tags } = splitHashtags(p.title || p.content);
-        const commentCount = comments.filter((c) => c.post_source_id === p.source_id).length;
         const hasImage = p.image_b64 && p.image_b64 !== PLACEHOLDER_PNG_B64;
         const src = hasImage ? `data:image/png;base64,${p.image_b64}` : "";
         return (
@@ -26,7 +25,7 @@ export function RankRows({ posts, comments }: { posts: OwnPostRow[]; comments: P
               )}
               <div className="rank-media-stats">
                 <span className="rank-stat"><Ico k="heart" /> {p.likes}</span>
-                <span className="rank-stat"><Ico k="msg" /> {commentCount}</span>
+                <span className="rank-stat"><Ico k="msg" /> {p.interactions}</span>
               </div>
             </div>
             <div className="rank-title-col">

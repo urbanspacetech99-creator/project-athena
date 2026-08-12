@@ -2,10 +2,9 @@
 import base64
 import json
 from athena.logging_setup import get_logger
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
 import httpx
 
 from athena.adapters.base import SourceAdapter, raise_on_error_envelope
@@ -93,14 +92,13 @@ class MetaOwnPostsAdapter(SourceAdapter):
         for p in raw["fb_posts"].get("data", []):
             likes = p.get("reactions", {}).get("summary", {}).get("total_count", 0)
             comments = p.get("comments", {}).get("summary", {}).get("total_count", 0)
-            shares = p.get("shares", {}).get("count", 0)
             #image_b64 = (self._download_image_b64(p.get("full_picture", ""))
                          #if self.mode == "live" else PLACEHOLDER_PNG_B64)
             attachments = (p.get("attachments") or {}).get("data") or [{}]
             is_video = attachments[0].get("media_type") == "video"
             rows.append({"source_id": p["id"], "platform": "facebook", "title": "",
                          "content": p.get("message", ""), "views": 0,
-                         "likes": likes, "interactions": likes + shares + comments,
+                         "likes": likes, "interactions": comments,
                          "image_b64": "", "_image_src": p.get("full_picture", ""),
                          "permalink": p.get("permalink_url", ""), "is_video": is_video,
                          "window_date": _parse_ts(p["created_time"])})
@@ -112,8 +110,7 @@ class MetaOwnPostsAdapter(SourceAdapter):
             rows.append({"source_id": m["id"], "platform": "instagram", "title": "",
                          "content": m.get("caption", ""), "views": ins.get("views", 0),
                          "likes": ins.get("likes", m.get("like_count", 0)),
-                         "interactions": ins.get("total_interactions",
-                                                 m.get("like_count", 0) + m.get("comments_count", 0)),
+                         "interactions": ins.get("comments", m.get("comments_count", 0)),
                          "image_b64": "", "_image_src": media_src,
                          "permalink": m.get("permalink", ""), "is_video": is_video,
                          "window_date": _parse_ts(m["timestamp"])})
@@ -127,16 +124,30 @@ class MetaOwnPostsAdapter(SourceAdapter):
         token = getattr(self.settings, "meta_page_token", "") or ""
         with httpx.Client(base_url=GRAPH, timeout=30) as c:
             body = c.get(f"/{post_id}/comments", params={
-                "fields": "message,created_time,from,like_count,comment_count",
+                "fields": "message,created_time,from,like_count,comment_count,attachment",
+                "filter": "stream",
                 "access_token": token}).json()
         return raise_on_error_envelope(body, "graph api")
 
-    def normalize_comments(self, raw) -> list[dict]:
+    def normalize_comments(self, raw, post_source_id: str | None = None) -> list[dict]:
         rows = []
         for cm in raw.get("data", []):
-            post_source_id = cm["id"].rsplit("_", 1)[0]
-            rows.append({"source_id": cm["id"], "post_source_id": post_source_id,
-                         "text": cm.get("message", ""), "window_date": _parse_ts(cm["created_time"])})
+            pid = post_source_id or cm["id"].rsplit("_", 1)[0]
+            window_date = _parse_ts(cm["created_time"]) if "created_time" in cm else datetime.now(timezone.utc)
+            username = cm.get("from", {}).get("username", "User")
+            attachment_type = cm.get("attachment", {}).get("type", "")
+            if cm.get("message"):
+                text = cm["message"]
+            elif attachment_type == "animated_image_share":
+                text = f"{username} sent a GIF"
+            elif attachment_type == "sticker":
+                text = f"{username} sent a sticker"
+            elif attachment_type in ("photo", "image"):
+                text = f"{username} shared a photo"
+            else:
+                text = f"{username} commented"
+            rows.append({"source_id": cm["id"], "post_source_id": pid,
+                        "text": text, "window_date": window_date})
         return rows
 
 
@@ -184,11 +195,25 @@ class MetaCompetitorAdapter(SourceAdapter):
     def fetch_comments_fixture(self):
         return self._load("meta_competitor_comments.json")
 
-    def normalize_comments(self, raw) -> list[dict]:
+    def normalize_comments(self, raw, post_source_id: str | None = None) -> list[dict]:
         rows = []
         for cm in raw.get("data", []):
-            rows.append({"source_id": cm["id"], "post_source_id": cm["id"].rsplit("_", 1)[0],
-                         "text": cm.get("message", ""), "window_date": _parse_ts(cm["created_time"])})
+            pid = post_source_id or cm["id"].rsplit("_", 1)[0]
+            window_date = _parse_ts(cm["created_time"]) if "created_time" in cm else datetime.now(timezone.utc)
+            username = cm.get("from", {}).get("username", "a follower")
+            attachment_type = cm.get("attachment", {}).get("type", "")
+            if cm.get("message"):
+                text = cm["message"]
+            elif attachment_type == "animated_image_share":
+                text = f"@{username} sent a GIF"
+            elif attachment_type == "sticker":
+                text = f"@{username} sent a sticker"
+            elif attachment_type in ("photo", "image"):
+                text = f"@{username} shared a photo"
+            else:
+                text = f"@{username} commented"
+            rows.append({"source_id": cm["id"], "post_source_id": pid,
+                        "text": text, "window_date": window_date})
         return rows
 
 
@@ -242,3 +267,12 @@ class MetaIGCompetitorAdapter(SourceAdapter):
                          "permalink": m.get("permalink", ""), "is_video": is_video,
                          "window_date": _parse_ts(m["timestamp"])})
         return rows
+
+    def fetch_comments_live(self, post_id: str):
+        token = getattr(self.settings, "meta_page_token", "") or ""
+        with httpx.Client(base_url=GRAPH, timeout=30) as c:
+            body = c.get(f"/{post_id}/comments", params={
+                "fields": "message,created_time,from,like_count,comment_count,attachment",
+                "filter": "stream",
+                "access_token": token}).json()
+        return raise_on_error_envelope(body, "graph api")

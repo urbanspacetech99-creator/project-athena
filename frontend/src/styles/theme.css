@@ -241,6 +241,10 @@ body{font-family:"DM Sans",system-ui,-apple-system,sans-serif;background:#FFEAD9
 .cm-name{font-size:11px;font-weight:700;color:var(--text)}
 .cm-stars{font-size:10px;color:var(--gold-d);font-weight:700;margin-left:5px}
 .cm-txt{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.cm-rank-group{padding:4px 0}
+.cm-rank-group+.cm-rank-group{margin-top:10px;padding-top:10px;border-top:1px solid #F4EEE6}
+.cm-rank-label{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:#F6F1E9;padding:3px 8px;border-radius:6px;margin-bottom:6px}
+.cm-rank-group .cm-item{border-top:none;padding:4px 0}
 
 /* competitor tab pills */
 .comp-pill-row{display:flex;gap:8px;flex-wrap:wrap}

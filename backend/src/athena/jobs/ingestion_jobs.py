@@ -30,7 +30,7 @@ def ingest_meta_posts(session_factory, settings: Settings) -> dict:
             by_platform.setdefault(r["platform"], []).append(r)
         keep_ids: set[str] = set()
         for plat_rows in by_platform.values():
-            by_interactions = sorted(plat_rows, key=lambda r: r["interactions"], reverse=True)
+            by_interactions = sorted(plat_rows, key=lambda r: (r["interactions"], r["likes"]), reverse=True)
             keep_ids.update(r["source_id"] for r in by_interactions[:3])
 
         existing_images = dict(session.query(OwnPost.source_id, OwnPost.image_b64)
@@ -49,8 +49,12 @@ def ingest_meta_posts(session_factory, settings: Settings) -> dict:
                 r["image_b64"] = PLACEHOLDER_PNG_B64
 
         p_ins, p_upd = upsert_rows(session, OwnPost, rows, ("source_id", "window_date"))
-        raw = adapter.fetch_comments_fixture() if mode == "fixture" else {"data": []}
-        comment_rows = adapter.normalize_comments(raw)
+        if mode == "fixture":
+            comment_rows = adapter.normalize_comments(adapter.fetch_comments_fixture())
+        else:
+            comment_rows = []
+            for source_id in keep_ids:
+                comment_rows.extend(adapter.normalize_comments(adapter.fetch_comments_live(source_id), source_id))
         c_ins, c_upd = upsert_rows(session, PostComment, comment_rows, ("source_id",))
         session.commit()
         return {"posts": IngestResult("meta", p_ins, p_upd),

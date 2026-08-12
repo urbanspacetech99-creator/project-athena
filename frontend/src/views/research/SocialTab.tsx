@@ -16,20 +16,17 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
   const comments = useApi(api.postComments);
   const reviews = useApi(api.googleReviews);
 
-  // Rank by interactions — real for both platforms (FB = likes+shares+comments, IG = insight).
-  // The Meta adapter has no Facebook views metric (FB rows always carry views: 0), so sorting
-  // by views would reduce the FB ranking to arbitrary insertion order.
+  // Rank by interactions — now comment count alone for both platforms (not likes/shares).
   const top = (platform: string) =>
     (posts.data?.items ?? [])
       .filter((p) => p.platform === platform)
-      .sort((a, b) => b.interactions - a.interactions)
+      .sort((a, b) => b.interactions - a.interactions || b.likes - a.likes)
       .slice(0, 3);
   const fb = top("facebook");
   const ig = top("instagram");
 
-  const postsById = new Map((posts.data?.items ?? []).map((p) => [p.source_id, p]));
-  const commentsFor = (platform: string) =>
-    (comments.data?.items ?? []).filter((c) => postsById.get(c.post_source_id)?.platform === platform);
+  const commentsForPost = (sourceId: string) =>
+    (comments.data?.items ?? []).filter((c) => c.post_source_id === sourceId);
 
   return (
     <>
@@ -44,7 +41,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
             <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="cm-body" style={{ maxHeight: "none", overflowY: "visible" }}>
-            <AsyncSection q={posts}>{() => <RankRows posts={fb} comments={comments.data?.items ?? []} />}</AsyncSection>
+            <AsyncSection q={posts}>{() => <RankRows posts={fb} />}</AsyncSection>
           </div>
         </div>
         <div className="cm-card">
@@ -53,7 +50,7 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
             <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="cm-body" style={{ maxHeight: "none", overflowY: "visible" }}>
-            <AsyncSection q={posts}>{() => <RankRows posts={ig} comments={comments.data?.items ?? []} />}</AsyncSection>
+            <AsyncSection q={posts}>{() => <RankRows posts={ig} />}</AsyncSection>
           </div>
         </div>
       </div>
@@ -62,30 +59,42 @@ export function SocialTab({ onGenerate }: { onGenerate: (title: string, context:
       <div className="cm-grid" style={{ marginBottom: 20, gridTemplateColumns: "1fr 1fr 1fr" }}>
         <div className="cm-card">
           <div className="cm-hdr" style={{ background: "#3E6FB0" }}>
-            <span>Facebook comments</span><small>{posts.data ? commentsFor("facebook").length : "…"}</small>
+            <span>Facebook comments</span>
+            <small>{posts.data ? fb.reduce((n, p) => n + commentsForPost(p.source_id).length, 0) : "…"}</small>
             <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="cm-body">
             <AsyncSection q={comments}>
-              {() => commentsFor("facebook").length === 0
-                ? <div className="empty-note">No comments yet.</div>
-                : newestFirst(commentsFor("facebook")).slice(0, 8).map((cm) => (
-                    <div className="cm-item" key={cm.id}><div className="cm-txt">{cm.text}</div></div>
+              {() => fb.length === 0
+                ? <div className="empty-note">No posts ingested yet.</div>
+                : fb.map((p, i) => (
+                    <div className="cm-rank-group" key={p.source_id}>
+                      <div className="cm-rank-label">Rank {i + 1}</div>
+                      {newestFirst(commentsForPost(p.source_id)).map((cm) => (
+                        <div className="cm-item" key={cm.id}><div className="cm-txt">{cm.text}</div></div>
+                      ))}
+                    </div>
                   ))}
             </AsyncSection>
           </div>
         </div>
         <div className="cm-card">
           <div className="cm-hdr" style={{ background: "#C0392B" }}>
-            <span>Instagram comments</span><small>{posts.data ? commentsFor("instagram").length : "…"}</small>
+            <span>Instagram commenters</span>
+            <small>{posts.data ? ig.reduce((n, p) => n + commentsForPost(p.source_id).length, 0) : "…"}</small>
             <StatusBadge kind="data" source="meta" light />
           </div>
           <div className="cm-body">
             <AsyncSection q={comments}>
-              {() => commentsFor("instagram").length === 0
-                ? <div className="empty-note">No comments yet.</div>
-                : newestFirst(commentsFor("instagram")).slice(0, 8).map((cm) => (
-                    <div className="cm-item" key={cm.id}><div className="cm-txt">{cm.text}</div></div>
+              {() => ig.length === 0
+                ? <div className="empty-note">No posts ingested yet.</div>
+                : ig.map((p, i) => (
+                    <div className="cm-rank-group" key={p.source_id}>
+                      <div className="cm-rank-label">Rank {i + 1}</div>
+                      {newestFirst(commentsForPost(p.source_id)).map((cm) => (
+                        <div className="cm-item" key={cm.id}><div className="cm-txt">{cm.text}</div></div>
+                      ))}
+                    </div>
                   ))}
             </AsyncSection>
           </div>
