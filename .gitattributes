@@ -1,0 +1,3 @@
+# built knowledge-graph dashboard (committed so a clone runs immediately, but
+# it is vite output — never hand-edited, and pointless to read as a diff)
+.understand-anything/dashboard/** -diff linguist-generated
