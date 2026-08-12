@@ -16,6 +16,7 @@ Python + FastAPI + LangGraph + Postgres; React + TypeScript dashboard.
 | Deployment guide | [`deploy/README.md`](deploy/README.md) |
 | Architecture diagram | `docs/diagrams/architecture.drawio` |
 | Live-credential validation checklist | `docs/LIVE_API_VALIDATION.md` |
+| Codebase knowledge graph (interactive) | [`.understand-anything/README.md`](.understand-anything/README.md) |
 
 ## For the marketing team
 

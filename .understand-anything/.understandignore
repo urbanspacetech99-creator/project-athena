@@ -1,0 +1,20 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, .venv/, __pycache__/, dist/, build/, obj/,
+#   *.lock, package-lock.json, *.min.js, images, fonts, media, *.pdf, etc.
+
+# --- Design source material, not part of the running system ---
+docs/draft/
+
+# --- Untracked local-only tooling notes ---
+docs/superpowers/
+
+# --- Historical design/plan documents (Jul 2026) ---
+docs/specs/
+
+# --- Backend test suite ---
+# Excluded by choice: removes tested_by coverage edges for the backend.
+# Frontend and dev-console tests are still analyzed.
+backend/tests/
