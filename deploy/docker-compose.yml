@@ -58,7 +58,7 @@ x-app-env: &app_env
 services:
   api:
     # Serves BOTH the REST API and the bundled marketing dashboard at "/".
-    image: athena-backend:0.4.0
+    image: athena-backend:0.5.0
     container_name: athena-api
     hostname: athena-api
     command: uvicorn athena.api.app:app --host 0.0.0.0 --port 8000
@@ -71,7 +71,7 @@ services:
 
   worker:
     # Daily external API data pull to DB
-    image: athena-backend:0.4.0
+    image: athena-backend:0.5.0
     container_name: athena-worker
     hostname: athena-worker
     command: python -m athena.worker.main
